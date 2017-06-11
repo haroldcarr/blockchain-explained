@@ -1,0 +1,37 @@
+name:    a001-the-chain-in-blockchain
+version: "0.0.0"
+license: BSD3
+
+dependencies:
+- base
+- classy-prelude
+- bytestring
+- text
+
+library:
+  source-dirs: src
+  ghc-options:
+  - -Wall
+  - -fwarn-tabs
+  - -O2
+
+executables:
+  a001:
+    main: main.hs
+    source-dirs: app
+    ghc-options:
+    - -Wall
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - a001-the-chain-in-blockchain
+
+tests:
+  test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options: -Wall
+    dependencies:
+    - a001-the-chain-in-blockchain
+    - hspec
