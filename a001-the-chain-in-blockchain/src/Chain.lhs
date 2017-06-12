@@ -186,11 +186,17 @@ where
 
 The above is the essence of the chain in blockchain.
 
+future expositions
+------------------
+
 Note that there was no discussion of
 
 - how to decide to add a block to a chain (e.g., mining, consensus)
 - merkle trees (i.e., an efficient, tamper-proof way to structure `bData` to hold more than one "transaction")
 - smart contracts (i.e., how to interpret the `bData` field in a `Block`)
+
+summary
+-------
 
 A blockchain is a list of blocks, where each block
 
@@ -231,6 +237,13 @@ A blockchain is a list of blocks, where each block
 >              }
 >      ]
 
+source code and discussion
+--------------------------
+
 The code for this exposition is available at : https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in-blockchain
+
+run the code:
+
+`stack test`
 
 A discussion is at: ***** TODO *****
