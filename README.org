@@ -1,4 +1,8 @@
 ** blockchain explained
 
 - [[a001-the-chain-in-blockchain][the chain in blockchain]]
+- the block in blockchain (TBD)
+- consensus (e.g., mining, Raft)
+- ...
+
 
