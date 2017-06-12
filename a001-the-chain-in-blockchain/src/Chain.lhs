@@ -92,9 +92,10 @@ For example, using the following functions:
 a new block may be added to the chain:
 
 > t1 :: Spec
-> t1 = let newChain = addBlock "2017-06-11 15:49:02.084473 PST"
->                              "June 11 data"
->                              genesisBlockchain
+> t1 =
+>   let newChain = addBlock "2017-06-11 15:49:02.084473 PST"
+>                           "June 11 data"
+>                           genesisBlockchain
 >   in describe "t1: add new block to chain" $ do
 >        it "increases length" $
 >          S.length newChain `shouldBe` S.length genesisBlockchain + 1
@@ -170,15 +171,17 @@ where
 The above is the essence of the chain in blockchain.
 
 Note that there was no discussion of
+
 - how to decide to add a block to a chain (e.g., mining, consensus)
 - merkle trees (i.e., an efficient, tamper-proof way to structure `bData` to hold more than one "transaction")
 - smart contracts (i.e., how to interpret the `bData` field in a `Block`)
 
 A blockchain is a list of blocks, where each block
+
 - contains data that may be interpreted as smart contracts
 - contains the hash of the previous block
 - contains a hash of itself
-  - the fact that the self hash is created with the previous hash makes the chain tamper-proof
+    - the fact that the self hash is created with the previous hash makes the chain tamper-proof
 
 > t3 :: Spec
 > t3 =
