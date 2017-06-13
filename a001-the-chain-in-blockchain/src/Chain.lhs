@@ -22,15 +22,16 @@ The most straigtforward part of a blockchain is the chain itself, a sequence of 
 For the purposes of this exposition, a block in the chain is:
 
 > data Block =
->   Block { bIndex        :: ! Int        -- ^ index of this block in the chain
->         , bPreviousHash :: ! BHash      -- ^ hash of previous block
->         , bTimestamp    :: ! BTimestamp -- ^ when this block was created
->         , bData         :: ! BData      -- ^ this block's data
->         , bHash         :: ! BHash      -- ^ this block's hash
+>   Block { bIndex     :: ! BIndex     -- ^ index of this block in the chain
+>         , bPrevHash  :: ! BHash      -- ^ hash of previous block
+>         , bTimestamp :: ! BTimestamp -- ^ when this block was created
+>         , bData      :: ! BData      -- ^ this block's data
+>         , bHash      :: ! BHash      -- ^ this block's hash
 >         } deriving (Eq, Show)
 
 where
 
+> type BIndex     = Int
 > type BHash      = ByteString
 > type BTimestamp = ByteString
 > type BData      = ByteString
@@ -53,7 +54,7 @@ begins the chain:
 
 The chain is tamper-proof because each block contains a hash of its contents.
 
-> calculateHash :: Int -> BHash -> BTimestamp -> BData
+> calculateHash :: BIndex -> BHash -> BTimestamp -> BData
 >               -> BHash
 > calculateHash i p t d = C.hash (BS.concat [BS.pack $ show i, p, t, d])
 
@@ -71,23 +72,21 @@ For example, using the following functions:
 >
 > makeNextBlock :: Blockchain -> BTimestamp -> BData
 >               -> Block
-> makeNextBlock blockchain tstamp bdata =
->  let (i, ph, _, _, h) = makeNextBlockInfo blockchain tstamp bdata
->  in Block i ph tstamp bdata h
+> makeNextBlock bc ts bd =
+>   let (i, ph, _, _, h) = nextBlockInfo bc ts bd
+>   in Block i ph ts bd h
 >
-> makeNextBlockInfo :: Blockchain -> BTimestamp -> BData
->                   -> (Int, BHash, BTimestamp, BData, BHash)
-> makeNextBlockInfo blockchain tstamp bdata =
->   let prev = getLastCommittedBlock blockchain
+> nextBlockInfo :: Blockchain -> BTimestamp -> BData
+>               -> (BIndex, BHash, BTimestamp, BData, BHash)
+> nextBlockInfo bc ts bd =
+>   let prev = getLastCommittedBlock bc
 >       i    = bIndex prev + 1
 >       ph   = bHash prev
->   in (i, ph, tstamp, bdata, calculateHash i ph tstamp bdata)
+>   in (i, ph, ts, bd, calculateHash i ph ts bd)
 >
 > getLastCommittedBlock :: Blockchain
 >                       -> Block
-> getLastCommittedBlock bc =
->   let i = S.length bc - 1
->   in fromMaybe (error "getLastCommittedBlock") (getBlock bc i)
+> getLastCommittedBlock bc = S.index bc (S.length bc - 1)
 
 a new block may be added to the chain:
 
@@ -105,10 +104,9 @@ a new block may be added to the chain:
 where
 
 > -- | Nothing if index out of range.
-> getBlock :: Blockchain -> Int
+> getBlock :: Blockchain -> BIndex
 >          -> Maybe Block
-> getBlock blockchain i | i < S.length blockchain = Just (S.index blockchain i)
->                       | otherwise               = Nothing
+> getBlock bc i = S.lookup i bc
 
 The chained block hashes ensure the integrity of a blockchain:
 
@@ -121,7 +119,7 @@ The chained block hashes ensure the integrity of a blockchain:
 >                                     genesisBlockchain)
 >       altered1i  = (S.index newChain 1) { bIndex = 10 }
 >       badChain1i = S.update 1 altered1i newChain
->       altered1p  = (S.index newChain 1) { bPreviousHash = "0" }
+>       altered1p  = (S.index newChain 1) { bPrevHash = "0" }
 >       badChain1p = S.update 1 altered1p newChain
 >       altered1d  = (S.index newChain 1) { bData  = "altered June 11 data" }
 >       badChain1d = S.update 1 altered1d newChain
@@ -140,8 +138,8 @@ The chained block hashes ensure the integrity of a blockchain:
 >       isValidBlockchain newChain   `shouldBe` Nothing
 >     it "invalid bIndex 1" $
 >       isValidBlockchain badChain1i `shouldBe` Just "invalid bIndex 1"
->     it "invalid bPreviousHash 1" $
->       isValidBlockchain badChain1p `shouldBe` Just "invalid bPreviousHash 1"
+>     it "invalid bPrevHash 1" $
+>       isValidBlockchain badChain1p `shouldBe` Just "invalid bPrevHash 1"
 >     it "invalid bHash 1" $
 >       isValidBlockchain badChain1d `shouldBe` Just "invalid bHash 1"
 >     it "invalid bHash 2" $
@@ -169,20 +167,18 @@ where
 > isValidBlock :: Block -> Block
 >              -> Maybe Text
 > isValidBlock validBlock checkBlock
->   | biv + 1              /= bic                      = err "invalid bIndex"
->   | bHash validBlock     /= bPreviousHash checkBlock = err "invalid bPreviousHash"
+>   | bIndex validBlock + 1 /= bIndex    checkBlock = err "invalid bIndex"
+>   | bHash  validBlock     /= bPrevHash checkBlock = err "invalid bPrevHash"
 >   | calculateHashForBlock checkBlock
->                          /= bHash checkBlock         = err "invalid bHash"
->   | otherwise                                        = Nothing
+>                           /= bHash checkBlock     = err "invalid bHash"
+>   | otherwise                                     = Nothing
 >  where
->   biv = bIndex validBlock
->   bic = bIndex checkBlock
->   err msg = Just (msg <> " " <> tshow (biv + 1))
+>   err msg = Just (msg <> " " <> tshow (bIndex validBlock + 1))
 >
 > calculateHashForBlock :: Block
 >                       -> BHash
 > calculateHashForBlock b =
->   calculateHash (bIndex b) (bPreviousHash b) (bTimestamp b) (bData b)
+>   calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 
 The above is the essence of the chain in blockchain.
 
@@ -218,19 +214,19 @@ A blockchain is a list of blocks, where each block
 >      withTwo `shouldBe`
 >      S.fromList
 >      [ Block { bIndex = 0
->              , bPreviousHash = "0"
+>              , bPrevHash = "0"
 >              , bTimestamp = "2017-03-05 10:49:02.084473 PST"
 >              , bData = "GENESIS BLOCK DATA"
 >              , bHash = "'\234-\147\141\"\142\235\CAN \246\158<\159\199s\174\\\225<\174\188O\150oM\217\DC3'\237\DC4n"
 >              }
 >      , Block { bIndex = 1
->              , bPreviousHash = "'\234-\147\141\"\142\235\CAN \246\158<\159\199s\174\\\225<\174\188O\150oM\217\DC3'\237\DC4n"
+>              , bPrevHash = "'\234-\147\141\"\142\235\CAN \246\158<\159\199s\174\\\225<\174\188O\150oM\217\DC3'\237\DC4n"
 >              , bTimestamp = "2017-06-11 15:49:02.084473 PST"
 >              , bData = "June 11 data"
 >              , bHash = "\145\238k24\175\147I\EOT\208\204\210\190s\192<b:\SOH\215\DC1\254)\173\EOT\186\220\US\SYNf\191\149"
 >              }
 >      , Block { bIndex = 2
->              , bPreviousHash = "\145\238k24\175\147I\EOT\208\204\210\190s\192<b:\SOH\215\DC1\254)\173\EOT\186\220\US\SYNf\191\149"
+>              , bPrevHash = "\145\238k24\175\147I\EOT\208\204\210\190s\192<b:\SOH\215\DC1\254)\173\EOT\186\220\US\SYNf\191\149"
 >              , bTimestamp = "2017-06-12 15:49:02.084473 PST"
 >              , bData = "June 12 data"
 >              , bHash = "\172\DEL\f\158e\DC4\159Us\188ny\235\v\146\201\138\244\179w\160\151\196;\203\165\232\145\156X\206$"

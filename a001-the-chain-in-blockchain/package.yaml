@@ -6,7 +6,7 @@ dependencies:
 - base
 - bytestring
 - classy-prelude
-- containers
+- containers >= 0.5.10.2
 - cryptohash
 - hspec
 - text
