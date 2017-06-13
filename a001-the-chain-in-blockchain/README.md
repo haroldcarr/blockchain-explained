@@ -69,8 +69,7 @@ The chain is tamper-proof because each block contains a hash of its
 contents.
 
 ``` {.sourceCode .literate .haskell}
-calculateHash :: BIndex -> BHash -> BTimestamp -> BData
-              -> BHash
+calculateHash :: BIndex -> BHash -> BTimestamp -> BData -> BHash
 calculateHash i p t d = C.hash (BS.concat [BS.pack $ show i, p, t, d])
 ```
 
@@ -81,14 +80,12 @@ contents of the chain can be altered.
 For example, using the following functions:
 
 ``` {.sourceCode .literate .haskell}
-addBlock :: BTimestamp -> BData -> Blockchain
-         -> Blockchain
+addBlock :: BTimestamp -> BData -> Blockchain -> Blockchain
 addBlock ts bd bc =
   let newBlock = makeNextBlock bc ts bd
   in bc |> newBlock
 
-makeNextBlock :: Blockchain -> BTimestamp -> BData
-              -> Block
+makeNextBlock :: Blockchain -> BTimestamp -> BData -> Block
 makeNextBlock bc ts bd =
   let (i, ph, _, _, h) = nextBlockInfo bc ts bd
   in Block i ph ts bd h
@@ -101,8 +98,7 @@ nextBlockInfo bc ts bd =
       ph   = bHash prev
   in (i, ph, ts, bd, calculateHash i ph ts bd)
 
-getLastCommittedBlock :: Blockchain
-                      -> Block
+getLastCommittedBlock :: Blockchain -> Block
 getLastCommittedBlock bc = S.index bc (S.length bc - 1)
 ```
 
@@ -125,8 +121,7 @@ where
 
 ``` {.sourceCode .literate .haskell}
 -- | Nothing if index out of range.
-getBlock :: Blockchain -> BIndex
-         -> Maybe Block
+getBlock :: Blockchain -> BIndex -> Maybe Block
 getBlock bc i = S.lookup i bc
 ```
 
@@ -174,8 +169,7 @@ where
 ``` {.sourceCode .literate .haskell}
 -- | Returns Nothing if valid.
 -- Just reason if invalid
-isValidBlockchain :: Blockchain
-                  -> Maybe Text
+isValidBlockchain :: Blockchain -> Maybe Text
 isValidBlockchain bc
   | S.length bc == 0 = Just "empty blockchain"
   | S.length bc == 1 = if S.index bc 0 == genesisBlock then Nothing
@@ -189,8 +183,7 @@ isValidBlockchain bc
 -- | Given a valid previous block and a block to check.
 -- Returns Nothing if valid.
 -- Just reason if invalid
-isValidBlock :: Block -> Block
-             -> Maybe Text
+isValidBlock :: Block -> Block -> Maybe Text
 isValidBlock validBlock checkBlock
   | bIndex validBlock + 1 /= bIndex    checkBlock = err "invalid bIndex"
   | bHash  validBlock     /= bPrevHash checkBlock = err "invalid bPrevHash"
@@ -199,11 +192,8 @@ isValidBlock validBlock checkBlock
   | otherwise                                     = Nothing
  where
   err msg = Just (msg <> " " <> tshow (bIndex validBlock + 1))
-
-calculateHashForBlock :: Block
-                      -> BHash
-calculateHashForBlock b =
-  calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
+  calculateHashForBlock b =
+    calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 ```
 
 The above is the essence of the chain in blockchain.
