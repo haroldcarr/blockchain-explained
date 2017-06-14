@@ -36,7 +36,7 @@ where
 > type BTimestamp = ByteString
 > type BData      = ByteString
 
-A genesis block:
+A hard-coded genesis block:
 
 > genesisBlock :: Block
 > genesisBlock =
@@ -52,6 +52,9 @@ begins the chain:
 > genesisBlockchain :: Blockchain
 > genesisBlockchain  = S.singleton genesisBlock
 
+For this exposition, the only purpose of the genesis block is to
+provide a verifiable `prevHash` for the first "real" block that gets added to the chain.
+
 The chain is tamper-proof because each block contains a hash of its contents.
 
 > calculateHash :: BIndex -> BHash -> BTimestamp -> BData -> BHash
@@ -59,7 +62,7 @@ The chain is tamper-proof because each block contains a hash of its contents.
 
 Since a block's contents includes the hash of the previous block, once
 a block has been added to a chain, neither the block nor the previous
-contents of the chain can be altered.
+contents of the chain can be altered without detection.
 
 For example, using the following functions:
 
@@ -101,7 +104,8 @@ where
 > getBlock :: Blockchain -> BIndex -> Maybe Block
 > getBlock bc i = S.lookup i bc
 
-The chained block hashes ensure the integrity of a blockchain:
+The chained block hashes ensure the integrity of a blockchain.
+Modification of a parts of any blocks in the chain is detected:
 
 > t2 :: Spec
 > t2 =
@@ -224,10 +228,8 @@ source code and discussion
 
 The code for this exposition is available at : https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in-blockchain
 
-run the code:
+run the code: `stack test`
 
-`stack test`
-
-Thanks to Ulises Cerviño Beresi and Heath Matlock for pre-publication feedback.
+Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena for pre-publication feedback.
 
 A discussion is at: ***** TODO *****

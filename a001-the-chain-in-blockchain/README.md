@@ -3,7 +3,7 @@ the chain in blockchain explained
 
 setup:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -20,13 +20,13 @@ import           Test.Hspec
 The most straigtforward part of a blockchain is the chain itself, a
 sequence of blocks:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 type Blockchain = Seq Block
 ```
 
 For the purposes of this exposition, a block in the chain is:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 data Block =
   Block { bIndex     :: ! BIndex     -- ^ index of this block in the chain
         , bPrevHash  :: ! BHash      -- ^ hash of previous block
@@ -38,16 +38,16 @@ data Block =
 
 where
 
-``` {.sourceCode .literate .haskell}
+```haskell
 type BIndex     = Int
 type BHash      = ByteString
 type BTimestamp = ByteString
 type BData      = ByteString
 ```
 
-A genesis block:
+A hard-coded genesis block:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 genesisBlock :: Block
 genesisBlock =
  let idx      = 0
@@ -60,26 +60,30 @@ genesisBlock =
 
 begins the chain:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 genesisBlockchain :: Blockchain
 genesisBlockchain  = S.singleton genesisBlock
 ```
 
+For this exposition, the only purpose of the genesis block is to provide
+a verifiable `prevHash` for the first "real" block that gets added to
+the chain.
+
 The chain is tamper-proof because each block contains a hash of its
 contents.
 
-``` {.sourceCode .literate .haskell}
+```haskell
 calculateHash :: BIndex -> BHash -> BTimestamp -> BData -> BHash
 calculateHash i p t d = C.hash (BS.concat [BS.pack $ show i, p, t, d])
 ```
 
 Since a block's contents includes the hash of the previous block, once a
 block has been added to a chain, neither the block nor the previous
-contents of the chain can be altered.
+contents of the chain can be altered without detection.
 
 For example, using the following functions:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 addBlock :: BTimestamp -> BData -> Blockchain -> Blockchain
 addBlock ts bd bc = bc |> makeNextBlock bc ts bd
 
@@ -102,7 +106,7 @@ getLastCommittedBlock bc = S.index bc (S.length bc - 1)
 
 a new block may be added to the chain:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 t1 :: Spec
 t1 =
   let newChain = addBlock "2017-06-11 15:49:02.084473 PST"
@@ -117,15 +121,16 @@ t1 =
 
 where
 
-``` {.sourceCode .literate .haskell}
+```haskell
 -- | Nothing if index out of range.
 getBlock :: Blockchain -> BIndex -> Maybe Block
 getBlock bc i = S.lookup i bc
 ```
 
-The chained block hashes ensure the integrity of a blockchain:
+The chained block hashes ensure the integrity of a blockchain.
+Modification of a parts of any blocks in the chain is detected:
 
-``` {.sourceCode .literate .haskell}
+```haskell
 t2 :: Spec
 t2 =
   let newChain = addBlock "2017-06-12 15:49:02.084473 PST"
@@ -164,7 +169,7 @@ t2 =
 
 where
 
-``` {.sourceCode .literate .haskell}
+```haskell
 -- | Returns Nothing if valid.
 -- Just reason if invalid
 isValidBlockchain :: Blockchain -> Maybe Text
@@ -216,7 +221,7 @@ A blockchain is a list of blocks, where each block
     -   the fact that the self hash is created with the previous hash
         makes the chain tamper-proof
 
-``` {.sourceCode .literate .haskell}
+```haskell
 t3 :: Spec
 t3 =
   let withOne = addBlock "2017-06-11 15:49:02.084473 PST"
@@ -256,11 +261,9 @@ source code and discussion
 The code for this exposition is available at :
 https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in-blockchain
 
-run the code:
+run the code: `stack test`
 
-`stack test`
-
-Thanks to Ulises Cerviño Beresi and Heath Matlock for pre-publication
-feedback.
+Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena
+for pre-publication feedback.
 
 A discussion is at: \*\*\*\*\* TODO \*\*\*\*\*
