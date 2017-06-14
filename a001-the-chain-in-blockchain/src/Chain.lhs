@@ -64,9 +64,7 @@ contents of the chain can be altered.
 For example, using the following functions:
 
 > addBlock :: BTimestamp -> BData -> Blockchain -> Blockchain
-> addBlock ts bd bc =
->   let newBlock = makeNextBlock bc ts bd
->   in bc |> newBlock
+> addBlock ts bd bc = bc |> makeNextBlock bc ts bd
 >
 > makeNextBlock :: Blockchain -> BTimestamp -> BData -> Block
 > makeNextBlock bc ts bd =
@@ -162,13 +160,11 @@ where
 > isValidBlock validBlock checkBlock
 >   | bIndex validBlock + 1 /= bIndex    checkBlock = err "invalid bIndex"
 >   | bHash  validBlock     /= bPrevHash checkBlock = err "invalid bPrevHash"
->   | calculateHashForBlock checkBlock
->                           /= bHash checkBlock     = err "invalid bHash"
+>   | hashBlock checkBlock  /= bHash     checkBlock = err "invalid bHash"
 >   | otherwise                                     = Nothing
 >  where
 >   err msg = Just (msg <> " " <> tshow (bIndex validBlock + 1))
->   calculateHashForBlock b =
->     calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
+>   hashBlock b = calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 
 The above is the essence of the chain in blockchain.
 
@@ -231,5 +227,7 @@ The code for this exposition is available at : https://github.com/haroldcarr/blo
 run the code:
 
 `stack test`
+
+Thanks to Ulises Cerviño Beresi and Heath Matlock for pre-publication feedback.
 
 A discussion is at: ***** TODO *****

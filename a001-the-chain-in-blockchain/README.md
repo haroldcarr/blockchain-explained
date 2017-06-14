@@ -81,9 +81,7 @@ For example, using the following functions:
 
 ``` {.sourceCode .literate .haskell}
 addBlock :: BTimestamp -> BData -> Blockchain -> Blockchain
-addBlock ts bd bc =
-  let newBlock = makeNextBlock bc ts bd
-  in bc |> newBlock
+addBlock ts bd bc = bc |> makeNextBlock bc ts bd
 
 makeNextBlock :: Blockchain -> BTimestamp -> BData -> Block
 makeNextBlock bc ts bd =
@@ -187,13 +185,11 @@ isValidBlock :: Block -> Block -> Maybe Text
 isValidBlock validBlock checkBlock
   | bIndex validBlock + 1 /= bIndex    checkBlock = err "invalid bIndex"
   | bHash  validBlock     /= bPrevHash checkBlock = err "invalid bPrevHash"
-  | calculateHashForBlock checkBlock
-                          /= bHash checkBlock     = err "invalid bHash"
+  | hashBlock checkBlock  /= bHash     checkBlock = err "invalid bHash"
   | otherwise                                     = Nothing
  where
   err msg = Just (msg <> " " <> tshow (bIndex validBlock + 1))
-  calculateHashForBlock b =
-    calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
+  hashBlock b = calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 ```
 
 The above is the essence of the chain in blockchain.
@@ -263,5 +259,8 @@ https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in
 run the code:
 
 `stack test`
+
+Thanks to Ulises Cerviño Beresi and Heath Matlock for pre-publication
+feedback.
 
 A discussion is at: \*\*\*\*\* TODO \*\*\*\*\*
