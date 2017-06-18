@@ -8,7 +8,7 @@ setup:
 >
 > module Chain where
 >
-> import           ClassyPrelude
+> import           ClassyPrelude         hiding (fail)
 > import           Crypto.Hash.SHA256    as C (hash)
 > import           Data.ByteString       as BS (concat)
 > import           Data.ByteString.Char8 as BS (pack)
@@ -124,50 +124,51 @@ Modification of a parts of any blocks in the chain is detected:
 >       badChain12 = S.update 2 altered12 newChain
 >   in describe "t2: valid blockchain" $ do
 >     it "invalid empty" $
->       isValidBlockchain S.empty    `shouldBe` Just "empty blockchain"
+>       isValidBlockchain S.empty    `shouldBe` Left "empty blockchain"
 >     it "valid genesisblockchain" $
 >       isValidBlockchain genesisBlockchain
->                                    `shouldBe` Nothing
+>                                    `shouldBe` Right ()
 >     it "invalid genesisblock" $
 >       isValidBlockchain (S.singleton altered12)
->                                    `shouldBe` Just "invalid genesis block"
+>                                    `shouldBe` Left "invalid genesis block"
 >     it "valid newChain" $
->       isValidBlockchain newChain   `shouldBe` Nothing
+>       isValidBlockchain newChain   `shouldBe` Right ()
 >     it "invalid bIndex 1" $
->       isValidBlockchain badChain1i `shouldBe` Just "invalid bIndex 1"
+>       isValidBlockchain badChain1i `shouldBe` Left "invalid bIndex 1"
 >     it "invalid bPrevHash 1" $
->       isValidBlockchain badChain1p `shouldBe` Just "invalid bPrevHash 1"
+>       isValidBlockchain badChain1p `shouldBe` Left "invalid bPrevHash 1"
 >     it "invalid bHash 1" $
->       isValidBlockchain badChain1d `shouldBe` Just "invalid bHash 1"
+>       isValidBlockchain badChain1d `shouldBe` Left "invalid bHash 1"
 >     it "invalid bHash 2" $
->       isValidBlockchain badChain12 `shouldBe` Just "invalid bHash 2"
+>       isValidBlockchain badChain12 `shouldBe` Left "invalid bHash 2"
 
 where
 
-> -- | Returns Nothing if valid.
-> -- Just reason if invalid
-> isValidBlockchain :: Blockchain -> Maybe Text
+> -- | Returns `Just ()` if valid.
+> -- others `Left reason`
+> isValidBlockchain :: Blockchain -> Either Text ()
 > isValidBlockchain bc
->   | S.length bc == 0 = Just "empty blockchain"
->   | S.length bc == 1 = if S.index bc 0 == genesisBlock then Nothing
->                        else Just "invalid genesis block"
+>   | S.length bc == 0 = Left "empty blockchain"
+>   | S.length bc == 1 = if S.index bc 0 == genesisBlock then Right ()
+>                        else Left "invalid genesis block"
 >   | otherwise        = isvb 0
 >  where
->   isvb i | i == S.length bc - 1 =  Nothing
->          | otherwise            =  isValidBlock (S.index bc i) (S.index bc (i + 1))
->                                <|> isvb (i + 1)
+>   isvb i | i == S.length bc - 1 = Right ()
+>          | otherwise            = do
+>              isValidBlock (S.index bc i) (S.index bc (i + 1))
+>              isvb (i + 1)
 >
 > -- | Given a valid previous block and a block to check.
-> -- Returns Nothing if valid.
-> -- Just reason if invalid
-> isValidBlock :: Block -> Block -> Maybe Text
-> isValidBlock validBlock checkBlock
->   | bIndex validBlock + 1 /= bIndex    checkBlock = err "invalid bIndex"
->   | bHash  validBlock     /= bPrevHash checkBlock = err "invalid bPrevHash"
->   | hashBlock checkBlock  /= bHash     checkBlock = err "invalid bHash"
->   | otherwise                                     = Nothing
+> -- | Returns `Just ()` if valid.
+> -- others `Left reason`
+> isValidBlock :: Block -> Block -> Either Text ()
+> isValidBlock validBlock checkBlock = do
+>   when (bIndex validBlock + 1 /= bIndex    checkBlock) (fail "invalid bIndex")
+>   when (bHash  validBlock     /= bPrevHash checkBlock) (fail "invalid bPrevHash")
+>   when (hashBlock checkBlock  /= bHash     checkBlock) (fail "invalid bHash")
+>   return ()
 >  where
->   err msg = Just (msg <> " " <> tshow (bIndex validBlock + 1))
+>   fail msg = Left (msg <> " " <> tshow (bIndex validBlock + 1))
 >   hashBlock b = calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 
 The above is the essence of the chain in blockchain.
