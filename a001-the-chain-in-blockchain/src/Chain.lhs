@@ -8,10 +8,11 @@ setup:
 >
 > module Chain where
 >
-> import           ClassyPrelude         hiding (fail)
-> import           Crypto.Hash.SHA256    as C (hash)
+> import           ClassyPrelude         as CP
+> import           Crypto.Hash.SHA256    as C  (hash)
 > import           Data.ByteString       as BS (concat)
 > import           Data.ByteString.Char8 as BS (pack)
+> import qualified Prelude               as P  (tail)
 > import           Data.Sequence         as S
 > import           Test.Hspec
 
@@ -145,30 +146,27 @@ Modification of a parts of any blocks in the chain is detected:
 where
 
 > -- | Returns `Just ()` if valid.
-> -- others `Left reason`
+> -- otherwise `Left reason`
 > isValidBlockchain :: Blockchain -> Either Text ()
-> isValidBlockchain bc
->   | S.length bc == 0 = Left "empty blockchain"
->   | S.length bc == 1 = if S.index bc 0 == genesisBlock then Right ()
->                        else Left "invalid genesis block"
->   | otherwise        = isvb 0
->  where
->   isvb i | i == S.length bc - 1 = Right ()
->          | otherwise            = do
->              isValidBlock (S.index bc i) (S.index bc (i + 1))
->              isvb (i + 1)
+> isValidBlockchain bc = do
+>   when (S.length bc == 0)                                 (Left "empty blockchain")
+>   when (S.length bc == 1 && S.index bc 0 /= genesisBlock) (Left "invalid genesis block")
+>   let elements = toList bc
+>   -- `sequence_` causes function to return on/with first `Left` value
+>   sequence_ (CP.map isValidBlock (CP.zip elements (P.tail elements)))
+>   return ()
 >
 > -- | Given a valid previous block and a block to check.
 > -- | Returns `Just ()` if valid.
-> -- others `Left reason`
-> isValidBlock :: Block -> Block -> Either Text ()
-> isValidBlock validBlock checkBlock = do
->   when (bIndex validBlock + 1 /= bIndex    checkBlock) (fail "invalid bIndex")
->   when (bHash  validBlock     /= bPrevHash checkBlock) (fail "invalid bPrevHash")
->   when (hashBlock checkBlock  /= bHash     checkBlock) (fail "invalid bHash")
+> -- otherwise `Left reason`
+> isValidBlock :: (Block, Block) -> Either Text ()
+> isValidBlock (validBlock, checkBlock) = do
+>   when (bIndex validBlock + 1 /= bIndex    checkBlock) (fail' "invalid bIndex")
+>   when (bHash  validBlock     /= bPrevHash checkBlock) (fail' "invalid bPrevHash")
+>   when (hashBlock checkBlock  /= bHash     checkBlock) (fail' "invalid bHash")
 >   return ()
 >  where
->   fail msg = Left (msg <> " " <> tshow (bIndex validBlock + 1))
+>   fail' msg   = Left (msg <> " " <> tshow (bIndex validBlock + 1))
 >   hashBlock b = calculateHash (bIndex b) (bPrevHash b) (bTimestamp b) (bData b)
 
 The above is the essence of the chain in blockchain.
