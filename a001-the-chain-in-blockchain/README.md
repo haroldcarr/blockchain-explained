@@ -257,12 +257,13 @@ t3 =
 source code and discussion
 --------------------------
 
+Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena
+for pre-publication feedback.
+
 The code for this exposition is available at :
 https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in-blockchain
 
 run the code: `stack test`
 
-Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena
-for pre-publication feedback.
-
-A discussion is at: \*\*\*\*\* TODO \*\*\*\*\*
+A discussion is at:
+https://www.reddit.com/r/Bitcoin/comments/6i802a/the\_chain\_in\_blockchain/
