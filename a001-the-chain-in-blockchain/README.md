@@ -1,6 +1,8 @@
 the chain in blockchain explained
 ---------------------------------
 
+This post develops a simple blockchain with the goal of understanding the basics of the chain.
+
 setup:
 
 ```haskell
@@ -266,4 +268,4 @@ The code for this exposition is available at :
 run the code: `stack test`
 
 A discussion is at:
-[reddit](https://www.reddit.com/r/Bitcoin/comments/6i802a/the_chain_in_blockchain/)
+[reddit](https://www.reddit.com/r/Bitcoin/comments/6i876p/the_chain_in_blockchain_explained/)

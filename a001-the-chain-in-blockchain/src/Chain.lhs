@@ -1,6 +1,8 @@
 the chain in blockchain explained
 ---------------------------------
 
+This post develops a simple blockchain with the goal of understanding the basics of the chain.
+
 setup:
 
 > {-# LANGUAGE NoImplicitPrelude #-}
@@ -231,4 +233,4 @@ The code for this exposition is available at : https://github.com/haroldcarr/blo
 
 run the code: `stack test`
 
-A discussion is at: https://www.reddit.com/r/Bitcoin/comments/6i802a/the_chain_in_blockchain/
+A discussion is at: https://www.reddit.com/r/Bitcoin/comments/6i876p/the_chain_in_blockchain_explained/
