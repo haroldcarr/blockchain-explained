@@ -1,0 +1,10 @@
+resolver: lts-8.17
+
+packages:
+- '.'
+
+extra-deps: [containers-0.5.10.2]
+
+flags: {}
+
+extra-package-dbs: []

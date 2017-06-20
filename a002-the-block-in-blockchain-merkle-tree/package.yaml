@@ -1,0 +1,28 @@
+name:    a002-the-block-in-blockchain
+version: "0.0.0"
+license: BSD3
+
+dependencies:
+- base
+- bytestring
+- classy-prelude
+- containers >= 0.5.10.2
+- cryptohash
+- hspec
+- text
+
+library:
+  source-dirs: src
+  ghc-options:
+  - -Wall
+  - -fwarn-tabs
+  - -O2
+
+tests:
+  test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options: -Wall
+    dependencies:
+    - a002-the-block-in-blockchain
+    - hspec
