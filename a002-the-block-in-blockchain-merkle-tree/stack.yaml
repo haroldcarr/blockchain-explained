@@ -3,7 +3,7 @@ resolver: lts-8.17
 packages:
 - '.'
 
-extra-deps: [containers-0.5.10.2]
+extra-deps: [containers-0.5.10.2, random-strings-0.1.1.0]
 
 flags: {}
 

@@ -9,6 +9,7 @@ dependencies:
 - containers >= 0.5.10.2
 - cryptohash
 - hspec
+- random-strings
 - text
 
 library:
