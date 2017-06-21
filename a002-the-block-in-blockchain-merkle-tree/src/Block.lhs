@@ -19,6 +19,9 @@ setup:
 > import           Test.Hspec
 > import           Test.RandomStrings
 
+> {-# ANN module ("HLint: ignore Eta reduce"::String) #-}
+> {-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
+
 > type BHash      = ByteString
 > type BTimestamp = ByteString
 
@@ -44,6 +47,9 @@ setup:
 > nullHash :: HashDigest
 > nullHash = BS.replicate 32 (chr 0)
 
+> concatHash :: HashDigest -> HashDigest -> HashDigest
+> concatHash x y = C.hash (x <> y)
+
 > createMerkleRoot :: HashList -> HashDigest
 > createMerkleRoot hashList0
 >     | S.null hashList0 = nullHash
@@ -67,19 +73,18 @@ setup:
 >             -- and concatenating their contents
 >             -- then hashing that concatenated contents.
 >             forM_ (S.chunksOf 2 hashList') $ \x ->
->                 modifySTRef' newHashList (|> C.hash (S.index x 0 <> S.index x 1))
+>                 modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
 >             loop newHashList
 
 This version also returns a map of (hash -> (child hash, child hash) for testing.
 
 > createMerkleRootAndMap :: HashList -> (HashDigest, M.Map HashDigest (HashDigest, HashDigest))
 > createMerkleRootAndMap hashList0
->     | S.null hashList0 = (nullHash, emptyMap)
+>     | S.null hashList0 = (nullHash, M.empty)
 >     | otherwise        = runST $ do
->         hl <- newSTRef (hashList0, emptyMap)
+>         hl <- newSTRef (hashList0, M.empty)
 >         loop hl
 >   where
->     emptyMap  = M.empty
 >     loop hl = do
 >         (hashList, m) <- readSTRef hl
 >         if S.length hashList == 1 then
@@ -96,10 +101,36 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >             -- and concatenating their contents
 >             -- then hashing that concatenated contents.
 >             forM_ (S.chunksOf 2 hashList') $ \x -> do
->                 let h = C.hash (S.index x 0 <> S.index x 1)
+>                 let h = concatHash (S.index x 0) (S.index x 1)
 >                 modifySTRef' newHashList (\(hl',m') ->
 >                     ( hl' |> h
 >                     , M.insert h (S.index x 0, S.index x 1) m'))
+>             loop newHashList
+
+> merklePathTo :: HashList -> M.Map HashDigest HashDigest
+> merklePathTo hashList0
+>     | S.null hashList0 = M.empty
+>     | otherwise        = runST $ do
+>         hl <- newSTRef (hashList0, M.empty)
+>         loop hl
+>   where
+>     loop hl = do
+>         (hashList, m) <- readSTRef hl
+>         if S.length hashList == 1 then
+>             return m
+>         else do
+>             -- when odd then duplicate last hash
+>             when (odd $ S.length hashList) $
+>                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
+>             newHashList   <- newSTRef (S.empty, m)
+>             (hashList',_) <- readSTRef hl
+>             forM_ (S.chunksOf 2 hashList') $ \x -> do
+>                 let parentHash = concatHash (S.index x 0) (S.index x 1)
+>                     leftHash   = S.index x 0
+>                     rightHash  = S.index x 1
+>                     m1         = M.insert leftHash  parentHash m
+>                     m2         = M.insert rightHash parentHash m1
+>                 modifySTRef' newHashList (\(hl',_) -> ( hl' |> parentHash, m2))
 >             loop newHashList
 
 > t1 :: Spec
@@ -123,8 +154,9 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 > isTxInBlock tx mp mr = loop (C.hash tx) mp == mr
 >   where
 >     loop h          []  = h
->     loop h (Left  x:xs) = loop (C.hash (x <> h)) xs
->     loop h (Right x:xs) = loop (C.hash (h <> x)) xs
+>     loop h (Left  x:xs) = go x h xs
+>     loop h (Right x:xs) = go h x xs
+>     go x y xs           = loop (concatHash x y) xs
 
 > t2 :: Spec
 > t2 = do
