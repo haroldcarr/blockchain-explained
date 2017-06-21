@@ -120,18 +120,11 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >                       "\253x\148`\EOT\205W\"\179\148\210\152_l\147J\145\155\to\210\136mI{\193U\253\RSkb\226"
 
 > isTxInBlock :: ByteString -> [Either HashDigest HashDigest] -> HashDigest -> Bool
-> isTxInBlock tx mp mr = loop (Left txHash : mp) == mr
+> isTxInBlock tx mp mr = loop (C.hash tx) mp == mr
 >   where
->     txHash = C.hash tx
->     loop [] = error "empty"
->     loop [Right _] = error "Right one"
->     loop [Left x] = x
->     loop (Right _:_:_) = error "Right multiple"
->     loop (Left x1:x2:xs) =
->         loop (Left (case x2 of
->                         Left  x2' -> C.hash (x2' <> x1)
->                         Right x2' -> C.hash (x1  <> x2')) : xs)
-
+>     loop h          []  = h
+>     loop h (Left  x:xs) = loop (C.hash (x <> h)) xs
+>     loop h (Right x:xs) = loop (C.hash (h <> x)) xs
 
 > t2 :: Spec
 > t2 = do
@@ -146,8 +139,6 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >         hK'                    = C.hash hkData
 >         merklePath             = [Right hL, Left hIJ, Right hMNOP, Left hABCDEFGH]
 >     describe "t1" $ do
->         it "txs" $ S.empty `shouldBe` txs'
->         it "txHashs" $ S.empty `shouldBe` txHashs
 >         it "hK" $ hK' `shouldBe` hK
 >         it "merklePath" $ merklePath `shouldBe` merklePath
 >         it "isTxInBlock" $ isTxInBlock hkData merklePath root `shouldBe` True
