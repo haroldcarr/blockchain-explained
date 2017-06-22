@@ -62,7 +62,7 @@ setup:
 >         if S.length hashList == 1 then
 >             return (S.index hashList 0)
 >         else do
->             -- when odd then duplicate last hash
+>             -- when odd duplicate last hash
 >             when (odd $ S.length hashList) $
 >                 modifySTRef m (|> S.index hashList (S.length hashList - 1))
 >             newHashList <- newSTRef S.empty
@@ -90,7 +90,7 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >         if S.length hashList == 1 then
 >             return (S.index hashList 0, m)
 >         else do
->             -- when odd then duplicate last hash
+>             -- when odd duplicate last hash
 >             when (odd $ S.length hashList) $
 >                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
 >             newHashList   <- newSTRef (S.empty, m)
@@ -107,7 +107,14 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >                     , M.insert h (S.index x 0, S.index x 1) m'))
 >             loop newHashList
 
-> merklePathTo :: HashList -> M.Map HashDigest HashDigest
+> data MerkleInfo =
+>     MerkleInfo {
+>           identity :: ! HashDigest
+>         , neighbor :: ! (Maybe (Either HashDigest HashDigest))
+>         , parent   :: ! (Maybe HashDigest)
+>     } deriving (Eq, Show)
+
+> merklePathTo :: HashList -> M.Map ByteString MerkleInfo
 > merklePathTo hashList0
 >     | S.null hashList0 = M.empty
 >     | otherwise        = runST $ do
@@ -117,20 +124,24 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >     loop hl = do
 >         (hashList, m) <- readSTRef hl
 >         if S.length hashList == 1 then
->             return m
+>             let i = S.index hashList 0
+>             in return (M.insert i (MerkleInfo i Nothing Nothing) m)
 >         else do
->             -- when odd then duplicate last hash
->             when (odd $ S.length hashList) $
->                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
+>             -- when odd duplicate last hash
+>             let hashList' = if odd $ S.length hashList then
+>                                 hashList |> S.index hashList (S.length hashList - 1)
+>                             else
+>                                 hashList
 >             newHashList   <- newSTRef (S.empty, m)
->             (hashList',_) <- readSTRef hl
 >             forM_ (S.chunksOf 2 hashList') $ \x -> do
 >                 let parentHash = concatHash (S.index x 0) (S.index x 1)
 >                     leftHash   = S.index x 0
 >                     rightHash  = S.index x 1
->                     m1         = M.insert leftHash  parentHash m
->                     m2         = M.insert rightHash parentHash m1
->                 modifySTRef' newHashList (\(hl',_) -> ( hl' |> parentHash, m2))
+>                     l          = MerkleInfo leftHash  (Just (Right rightHash)) (Just parentHash)
+>                     r          = MerkleInfo rightHash (Just (Left  leftHash))  (Just parentHash)
+>                 modifySTRef' newHashList (\(hl', m') ->
+>                     ( hl' |> parentHash
+>                     , M.insert leftHash l (M.insert rightHash r m')))
 >             loop newHashList
 
 > t1 :: Spec
@@ -170,10 +181,23 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >         hkData                 = S.index txs' 10
 >         hK'                    = C.hash hkData
 >         merklePath             = [Right hL, Left hIJ, Right hMNOP, Left hABCDEFGH]
+>         merklePathTo'          = merklePathTo (S.empty |> "00" |> "01" |> "02" |> "03")
 >     describe "t1" $ do
 >         it "hK" $ hK' `shouldBe` hK
 >         it "merklePath" $ merklePath `shouldBe` merklePath
 >         it "isTxInBlock" $ isTxInBlock hkData merklePath root `shouldBe` True
+>         it "merklePathTo" $ merklePathTo' `shouldBe`
+>            M.fromList [("00",MerkleInfo { identity = "00", neighbor = Just (Right "01")
+>                                         , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
+>                       ,("01",MerkleInfo { identity = "01", neighbor = Just (Left "00")
+>                                         , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
+>                       ,("02",MerkleInfo { identity = "02", neighbor = Just (Right "03")
+>                                         , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
+>                       ,("03",MerkleInfo { identity = "03", neighbor = Just (Left "02")
+>                                         , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
+>                       ,("\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2",MerkleInfo {identity = "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2", neighbor = Just (Right "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
+>                       ,("\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192",MerkleInfo {identity = "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192", neighbor = Just (Left "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
+>                       ,("\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243",MerkleInfo {identity = "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243", neighbor = Nothing, parent = Nothing})]
 
 {-
 import           Crypto.Hash.SHA256    as C  (hash)
