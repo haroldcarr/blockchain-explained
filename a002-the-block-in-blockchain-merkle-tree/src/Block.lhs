@@ -76,6 +76,31 @@ setup:
 >                 modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
 >             loop newHashList
 
+> createMerkleRoot' :: HashList -> HashDigest
+> createMerkleRoot' hashList0
+>     | S.null hashList0 = nullHash
+>     | otherwise        = loop hashList0
+>   where
+>     loop hl =
+>         if S.length hl == 1 then
+>             S.index hl 0
+>         else do
+>             -- when odd duplicate last hash
+>             let hl' = if odd $ S.length hl then
+>                           hl |> S.index hl (S.length hl - 1)
+>                       else
+>                           hl
+>             -- Make newHashList (1/2 size of given hashList)
+>             -- where every element of newHashList is made
+>             -- by taking adjacent pairs of given hashList
+>             -- and concatenating their contents
+>             -- then hashing that concatenated contents.
+>             loop $ runST $ do
+>                 newHashList <- newSTRef S.empty
+>                 forM_ (S.chunksOf 2 hl') $ \x ->
+>                     modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
+>                 readSTRef newHashList
+
 > t1 :: Spec
 > t1 =
 >     let one   = S.empty |> C.hash "00"
