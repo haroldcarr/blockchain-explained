@@ -114,8 +114,8 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >         , parent   :: ! (Maybe HashDigest)
 >     } deriving (Eq, Show)
 
-> merklePathTo :: HashList -> M.Map ByteString MerkleInfo
-> merklePathTo hashList0
+> mkMerkleTreeMap :: HashList -> M.Map ByteString MerkleInfo
+> mkMerkleTreeMap hashList0
 >     | S.null hashList0 = M.empty
 >     | otherwise        = runST $ do
 >         hl <- newSTRef (hashList0, M.empty)
@@ -144,6 +144,14 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >                     , M.insert leftHash l (M.insert rightHash r m')))
 >             loop newHashList
 
+> merklePathTo :: HashDigest -> M.Map ByteString MerkleInfo -> [Either HashDigest HashDigest]
+> merklePathTo h m = go (m ! h) []
+>   where
+>     go (MerkleInfo _              _    Nothing) xs = CP.reverse xs
+>     go (MerkleInfo _ (Just (Left  l)) (Just p)) xs = go (m ! p) (Left  l : xs)
+>     go (MerkleInfo _ (Just (Right r)) (Just p)) xs = go (m ! p) (Right r : xs)
+>     go MerkleInfo {}                             _ = error "merklePathTo"
+> 
 > t1 :: Spec
 > t1 =
 >     let one   = S.empty |> C.hash "00"
@@ -181,12 +189,14 @@ This version also returns a map of (hash -> (child hash, child hash) for testing
 >         hkData                 = S.index txs' 10
 >         hK'                    = C.hash hkData
 >         merklePath             = [Right hL, Left hIJ, Right hMNOP, Left hABCDEFGH]
->         merklePathTo'          = merklePathTo (S.empty |> "00" |> "01" |> "02" |> "03")
+>         mkMerkleTreeMap'       = mkMerkleTreeMap (S.empty |> "00" |> "01" |> "02" |> "03")
+>         merklePathTo'          = merklePathTo hK' (mkMerkleTreeMap txHashs)
 >     describe "t1" $ do
 >         it "hK" $ hK' `shouldBe` hK
 >         it "merklePath" $ merklePath `shouldBe` merklePath
 >         it "isTxInBlock" $ isTxInBlock hkData merklePath root `shouldBe` True
->         it "merklePathTo" $ merklePathTo' `shouldBe`
+>         it "merklePathTo" $ merklePathTo' `shouldBe` merklePath
+>         it "mkMerkleTreeMap" $ mkMerkleTreeMap' `shouldBe`
 >            M.fromList [("00",MerkleInfo { identity = "00", neighbor = Just (Right "01")
 >                                         , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
 >                       ,("01",MerkleInfo { identity = "01", neighbor = Just (Left "00")
