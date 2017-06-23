@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
-
 the block in blockchain explained (merkle trees)
 ---------------------------------
 
@@ -20,7 +18,7 @@ setup:
 > import           Data.STRef.Strict
 > import           Test.Hspec
 > import           Test.RandomStrings
-
+>
 > {-# ANN module ("HLint: ignore Eta reduce"::String)         #-}
 > {-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
 
@@ -258,9 +256,9 @@ verify that the transaction is in the block:
 > t3 = do
 >     txs' <- runIO (S.replicateM 15 (do rw <- randomWord randomASCII 100; return (BS.pack rw)))
 >     let hashList   = CP.map C.hash txs'
+>         notHKTX    = S.index txs'  9
 >         hKTX       = S.index txs' 10
 >         hK         = C.hash hKTX
->         notHKTX    = S.index txs'  9
 >         merkleRoot = createMerkleRoot hashList
 >         merklePath = merklePathTo hK (mkMerkleTreeMap hashList)
 >     describe "t3" $ do
