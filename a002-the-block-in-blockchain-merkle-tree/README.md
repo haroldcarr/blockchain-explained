@@ -82,7 +82,7 @@ the focus is on `bMerkleRoot`.
 merkle root
 -----------
 
-The merkle root is hash of the hash of the bytes that make up each
+The merkle root a is hash of the hash of the bytes that make up each
 transaction.
 
 The bytes of all transactions in the block are individually hashed,
@@ -198,7 +198,7 @@ type MerklePathElement = Either HashDigest HashDigest
 -- | neighbor and parent are `Nothing` for the root
 data MerkleInfo =
     MerkleInfo {
-          identity :: ! HashDigest                             -- ^ for testing
+          identity :: ! HashDigest                -- ^ for testing
         , neighbor :: ! (Maybe MerklePathElement)
         , parent   :: ! (Maybe HashDigest)
     } deriving (Eq, Show)
@@ -341,7 +341,7 @@ Diagrams from [Mastering
 Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/) by
 Andreas M. Antonopoulos.
 
-Thanks to TBD
+Thanks to Ulises Cerviño Beresi, TBD
 
 source code and discussion
 --------------------------

@@ -69,7 +69,7 @@ Here the focus is on `bMerkleRoot`.
 merkle root
 -----------
 
-The merkle root is hash of the hash of the bytes that make up each transaction.
+The merkle root is a hash of the hash of the bytes that make up each transaction.
 
 The bytes of all transactions in the block are individually hashed, forming a list
 of hashes:
@@ -176,7 +176,7 @@ To create a merkle path an explicit tree may be used:
 > -- | neighbor and parent are `Nothing` for the root
 > data MerkleInfo =
 >     MerkleInfo {
->           identity :: ! HashDigest                             -- ^ for testing
+>           identity :: ! HashDigest                -- ^ for testing
 >         , neighbor :: ! (Maybe MerklePathElement)
 >         , parent   :: ! (Maybe HashDigest)
 >     } deriving (Eq, Show)
@@ -311,7 +311,7 @@ Diagrams from
 [Mastering Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/)
 by Andreas M. Antonopoulos.
 
-Thanks to TBD
+Thanks to Ulises Cerviño Beresi, TBD
 
 source code and discussion
 --------------------------
