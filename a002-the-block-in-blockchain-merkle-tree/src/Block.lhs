@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 the block in blockchain explained (merkle trees)
 ---------------------------------
 
@@ -22,8 +24,26 @@ setup:
 > {-# ANN module ("HLint: ignore Eta reduce"::String)         #-}
 > {-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
 
-> type BHash      = ByteString
-> type BTimestamp = ByteString
+For this exposition, a block will be defined as:
+
+> data Block =
+>     Block {
+>           header :: ! BlockHeader
+>         , txs    :: ! Transactions
+>     } deriving (Eq, Show)
+
+where transactions are are an ordered sequence of data:
+
+> type Transaction  = ByteString
+> type Transactions = Seq BData
+
+For this expostion the "transactions" are uninterpreted opaque data:
+
+> type BData        = ByteString
+
+In a "real" blockchain, this is where "smart contracts" would be involved.
+
+The most important part, for now, is the header:
 
 > data BlockHeader =
 >     BlockHeader {
@@ -32,122 +52,160 @@ setup:
 >         , bTimestamp  :: ! BTimestamp -- ^ when this block was created
 >     } deriving (Eq, Show)
 
-> type BData        = ByteString
-> type Transactions = Seq BData
+where
 
-> data Block =
->     Block {
->           header :: ! BlockHeader
->         , txs    :: ! Transactions
->     } deriving (Eq, Show)
+> type BHash      = ByteString
+> type BTimestamp = ByteString
 
-> type HashList   = Seq HashDigest
+The exposition
+[The Chain in Blockchain]("http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html")
+explained how blocks are linked in chains using `bPrevHash` etc.
+Here the focus is on `bMerkleRoot`.
+
+The merkle root is hash of the hash of the bytes that make up each transaction.
+
+The bytes of all transactions in the block are individually hashed, forming a list
+of hashes:
+
 > type HashDigest = ByteString
+> type HashList   = Seq HashDigest
+>
+> txHashes :: Block -> HashList
+> txHashes (Block _ transactions) = CP.map C.hash transactions
 
-> nullHash :: HashDigest
-> nullHash = BS.replicate 32 (chr 0)
+Then each each adjacent pair hashes are concatenated and hashed again,
 
 > concatHash :: HashDigest -> HashDigest -> HashDigest
 > concatHash x y = C.hash (x <> y)
 
-> createMerkleRoot :: HashList -> HashDigest
-> createMerkleRoot hashList0
->     | S.null hashList0 = nullHash
->     | otherwise        = runST $ do
->         hl <- newSTRef hashList0
->         loop hl
->   where
->     loop hl = do
->         hashList <- readSTRef hl
->         if S.length hashList == 1 then
->             return (S.index hashList 0)
->         else do
->             -- when odd duplicate last hash
->             when (odd $ S.length hashList) $
->                 modifySTRef hl (|> S.index hashList (S.length hashList - 1))
->             newHashList <- newSTRef S.empty
->             hashList'   <- readSTRef hl
->             -- Make newHashList (1/2 size of given hashList)
->             -- where every element of newHashList is made
->             -- by taking adjacent pairs of given hashList
->             -- and concatenating their contents
->             -- then hashing that concatenated contents.
->             forM_ (S.chunksOf 2 hashList') $ \x ->
->                 modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
->             loop newHashList
+forming the parent of those pairs.  This process is repeated on each level or ordered
+parents until there is a single node.  That node is the "merkle root":
 
-> createMerkleRoot' :: HashList -> HashDigest
-> createMerkleRoot' hashList0
->     | S.null hashList0 = nullHash
->     | otherwise        = loop hashList0
+![img](https://orm-chimera-prod.s3.amazonaws.com/1234000001802/images/msbt_0703.png)
+
+> createMerkleRoot :: HashList -> HashDigest
+> createMerkleRoot hl0
+>     | S.null hl0 = nullHash
+>     | otherwise  = loop hl0
 >   where
+>
 >     loop hl =
->         if S.length hl == 1 then
->             S.index hl 0
->         else do
->             -- when odd duplicate last hash
->             let hl' = if odd $ S.length hl then
->                           hl |> S.index hl (S.length hl - 1)
->                       else
->                           hl
->             -- Make newHashList (1/2 size of given hashList)
->             -- where every element of newHashList is made
->             -- by taking adjacent pairs of given hashList
->             -- and concatenating their contents
->             -- then hashing that concatenated contents.
->             loop $ runST $ do
->                 newHashList <- newSTRef S.empty
->                 forM_ (S.chunksOf 2 hl') $ \x ->
->                     modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
->                 readSTRef newHashList
+>         if S.length hl == 1 then S.index hl 0
+>         else loop (combine (dupWhenOdd hl))
+>
+>     -- when odd duplicate last hash
+>     dupWhenOdd hl =
+>         if odd $ S.length hl then hl |> S.index hl (S.length hl - 1)
+>         else hl
+>
+>     -- Make newHashList (1/2 size of given hashList)
+>     -- where every element of newHashList is made
+>     -- by taking adjacent pairs of given hashList,
+>     -- concatenating their contents
+>     -- then hashing that concatenated contents.
+>     combine hl = runST $ do
+>         newHashList <- newSTRef S.empty
+>         forM_ (S.chunksOf 2 hl) $ \x ->
+>             modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
+>         readSTRef newHashList
+
+where
+
+> nullHash :: HashDigest
+> nullHash = BS.replicate 32 (chr 0)
 
 > t1 :: Spec
 > t1 =
->     let one   = S.empty |> C.hash "00"
->         two   = one     |> C.hash "01"
+>     let one   = S.empty |> C.hash "01"
+>         two   = one     |> C.hash "10"
 >         three = two     |> C.hash "11"
 >     in describe "t1" $ do
->         it "empty"    $ createMerkleRoot S.empty `shouldBe` nullHash
->         it "one"      $ createMerkleRoot one
->                       `shouldBe`
->                       "\241SC\146'\155\221\191\157C\221\232p\FS\181\190\DC4\184/v\236f\a\191\141j\213W\246\SI0N"
->         it "two"      $ createMerkleRoot two
->                       `shouldBe`
->                       "\196\215\&1\182\164\&2\SUBcsV\166 <\163\t\242W\t>\GS\149\195\164\241\222\225j\r\DC4gGB"
->         it "three"    $ createMerkleRoot three
->                       `shouldBe`
->                       "\253x\148`\EOT\205W\"\179\148\210\152_l\147J\145\155\to\210\136mI{\193U\253\RSkb\226"
+>         it "empty" $ createMerkleRoot S.empty `shouldBe` nullHash
+>         it "one"   $ createMerkleRoot one     `shouldBe` C.hash "01"
+>         it "two"   $ createMerkleRoot two     `shouldBe` concatHash (C.hash "01") (C.hash "10")
+>         it "three" $ createMerkleRoot three
+>                      `shouldBe`
+>                      "\STX\SYN\n\251\228\227\135\246\SUB\EM\128\196\r\b\166\RS\NAK9\235X\236R\184\134\220\141wP\225\ACK\169\254"
 
-> isTxInBlock :: ByteString -> [Either HashDigest HashDigest] -> HashDigest -> Bool
-> isTxInBlock tx mp mr = loop (C.hash tx) mp == mr
->   where
->     loop h          []  = h
->     loop h (Left  x:xs) = go x h xs
->     loop h (Right x:xs) = go h x xs
->     go x y xs           = loop (concatHash x y) xs
+The merkle root, besides acting as a "signature" of the transactions,
+can be used by lightweight peers to ensure that a transaction is in a
+block without needing to access (i.e., over a network connection) all
+the transactions in a block
+(e.g., Bitcoin's
+[Simplified Payment Verification]("http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#_merkle_trees_and_simplified_payment_verification_spv")).
 
-> createMerkleRootAndMap :: HashList -> (HashDigest, M.Map HashDigest (HashDigest, HashDigest))
-> createMerkleRootAndMap hashList0
->     | S.null hashList0 = (nullHash, M.empty)
->     | otherwise        = runST $ do
->         hl <- newSTRef (hashList0, M.empty)
->         loop hl
+A lightweight contacts a full node asking for a "merkle path" from a particular transaction,
+through the merkle tree, to the merkle root.
+
+![img](https://orm-chimera-prod.s3.amazonaws.com/1234000001802/images/msbt_0705.png)
+
+Assume the lightweight node has transaction `K`.  To verify it is a member of the block it
+hashes transaction `K`, forming `H_K`.  It sends `H_K` to the full node.  The full
+node creates a merkle path by identifying which ordered set of hashes it needs to send to their
+client so it can hash its transaction with the path to reach and match the root (a mismatch
+would mean the transaction is not included in the block).  In this case the path would be
+
+~~~haskell
+[H_L, H_IJ, H_MNOP, H_ABCDEFGH]
+~~~
+
+Those are the hashes needed by the lightweight peer to hash from its transaction to the root.
+
+To create the path an explicit tree may be used:
+
+> -- | Left or Right neighbor
+> type MerklePathElement = Either HashDigest HashDigest
+> type MerklePath        = [ MerklePathElement ]
+>
+> -- | neighbor and parent are `Nothing` for the root
+> data MerkleInfo =
+>     MerkleInfo {
+>           identity :: ! HashDigest                             -- ^ for testing
+>         , neighbor :: ! (Maybe MerklePathElement)
+>         , parent   :: ! (Maybe HashDigest)
+>     } deriving (Eq, Show)
+>
+> type MerkleTreeMap = M.Map HashDigest MerkleInfo
+>
+> -- | This function has the same structure as `createMerkleRoot`.
+> -- The difference is that this one creates a tree (using a Map).
+> mkMerkleTreeMap :: HashList -> MerkleTreeMap
+> mkMerkleTreeMap hl0
+>     | S.null hl0 = M.empty
+>     | otherwise  = loop (hl0, M.empty)
 >   where
->     loop hl = do
->         (hashList, m) <- readSTRef hl
->         if S.length hashList == 1 then
->             return (S.index hashList 0, m)
->         else do
->             when (odd $ S.length hashList) $
->                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
->             newHashList   <- newSTRef (S.empty, m)
->             (hashList',_) <- readSTRef hl
->             forM_ (S.chunksOf 2 hashList') $ \x -> do
->                 let h = concatHash (S.index x 0) (S.index x 1)
->                 modifySTRef' newHashList (\(hl',m') ->
->                     ( hl' |> h
->                     , M.insert h (S.index x 0, S.index x 1) m'))
->             loop newHashList
+>     loop (hl, m) =
+>         if S.length hl == 1 then
+>             let h = S.index hl 0
+>             in M.insert h (MerkleInfo h Nothing Nothing) m
+>         else loop (combine (dupWhenOdd hl) m)
+>
+>     dupWhenOdd hl =
+>         if odd $ S.length hl then hl |> S.index hl (S.length hl - 1)
+>         else hl
+>
+>     combine hl m = runST $ do
+>         newHashListAndMap <- newSTRef (S.empty, m)
+>         forM_ (S.chunksOf 2 hl) $ \x -> do
+>             let parentHash = concatHash (S.index x 0) (S.index x 1)
+>                 leftHash   = S.index x 0
+>                 rightHash  = S.index x 1
+>                 l          = MerkleInfo leftHash  (Just (Right rightHash)) (Just parentHash)
+>                 r          = MerkleInfo rightHash (Just (Left  leftHash))  (Just parentHash)
+>             modifySTRef' newHashListAndMap (\(hl', m') ->
+>                 ( hl' |> parentHash
+>                 , M.insert leftHash l (M.insert rightHash r m')))
+>         readSTRef newHashListAndMap
+
+Then, given a hash of a transaction (and the tree created above), create a path to the root.
+
+> merklePathTo :: HashDigest -> MerkleTreeMap -> MerklePath
+> merklePathTo h m = go (m ! h) []
+>   where
+>     go (MerkleInfo _              _    Nothing) xs = CP.reverse xs
+>     go (MerkleInfo _ (Just (Left  l)) (Just p)) xs = go (m ! p) (Left  l : xs)
+>     go (MerkleInfo _ (Just (Right r)) (Just p)) xs = go (m ! p) (Right r : xs)
+>     go MerkleInfo {}                             _ = error "merklePathTo"
 
 > t2 :: Spec
 > t2 = do
@@ -181,16 +239,20 @@ setup:
 >                       ,("\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192",MerkleInfo {identity = "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192", neighbor = Just (Left "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
 >                       ,("\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243",MerkleInfo {identity = "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243", neighbor = Nothing, parent = Nothing})]
 
-> data MerkleInfo =
->     MerkleInfo {
->           identity :: ! HashDigest
->         , neighbor :: ! (Maybe (Either HashDigest HashDigest))
->         , parent   :: ! (Maybe HashDigest)
->     } deriving (Eq, Show)
+---------------
 
-> mkMerkleTreeMap :: HashList -> M.Map ByteString MerkleInfo
-> mkMerkleTreeMap hashList0
->     | S.null hashList0 = M.empty
+
+> isTxInBlock :: Transaction -> MerklePath -> HashDigest -> Bool
+> isTxInBlock tx mp mr = loop (C.hash tx) mp == mr
+>   where
+>     loop h          []  = h
+>     loop h (Left  x:xs) = go x h xs
+>     loop h (Right x:xs) = go h x xs
+>     go x y xs           = loop (concatHash x y) xs
+
+> createMerkleRootAndMap :: HashList -> (HashDigest, M.Map HashDigest (HashDigest, HashDigest))
+> createMerkleRootAndMap hashList0
+>     | S.null hashList0 = (nullHash, M.empty)
 >     | otherwise        = runST $ do
 >         hl <- newSTRef (hashList0, M.empty)
 >         loop hl
@@ -198,32 +260,19 @@ setup:
 >     loop hl = do
 >         (hashList, m) <- readSTRef hl
 >         if S.length hashList == 1 then
->             let i = S.index hashList 0
->             in return (M.insert i (MerkleInfo i Nothing Nothing) m)
+>             return (S.index hashList 0, m)
 >         else do
->             let hashList' = if odd $ S.length hashList then
->                                 hashList |> S.index hashList (S.length hashList - 1)
->                             else
->                                 hashList
+>             when (odd $ S.length hashList) $
+>                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
 >             newHashList   <- newSTRef (S.empty, m)
+>             (hashList',_) <- readSTRef hl
 >             forM_ (S.chunksOf 2 hashList') $ \x -> do
->                 let parentHash = concatHash (S.index x 0) (S.index x 1)
->                     leftHash   = S.index x 0
->                     rightHash  = S.index x 1
->                     l          = MerkleInfo leftHash  (Just (Right rightHash)) (Just parentHash)
->                     r          = MerkleInfo rightHash (Just (Left  leftHash))  (Just parentHash)
->                 modifySTRef' newHashList (\(hl', m') ->
->                     ( hl' |> parentHash
->                     , M.insert leftHash l (M.insert rightHash r m')))
+>                 let h = concatHash (S.index x 0) (S.index x 1)
+>                 modifySTRef' newHashList (\(hl',m') ->
+>                     ( hl' |> h
+>                     , M.insert h (S.index x 0, S.index x 1) m'))
 >             loop newHashList
 
-> merklePathTo :: HashDigest -> M.Map ByteString MerkleInfo -> [Either HashDigest HashDigest]
-> merklePathTo h m = go (m ! h) []
->   where
->     go (MerkleInfo _              _    Nothing) xs = CP.reverse xs
->     go (MerkleInfo _ (Just (Left  l)) (Just p)) xs = go (m ! p) (Left  l : xs)
->     go (MerkleInfo _ (Just (Right r)) (Just p)) xs = go (m ! p) (Right r : xs)
->     go MerkleInfo {}                             _ = error "merklePathTo"
 
 {-
 import           Crypto.Hash.SHA256    as C  (hash)
@@ -233,3 +282,5 @@ hashList = S.empty |> C.hash "00" |> C.hash "01" |> C.hash "11"
 :b createMerkleRoot
 createMerkleRoot hashList
 -}
+
+Credits : Mastering Bitcoin
