@@ -210,77 +210,65 @@ Then, given a hash of a transaction (and the tree created above), create a path 
 > t2 :: Spec
 > t2 = do
 >     txs' <- runIO (S.replicateM 15 (do rw <- randomWord randomASCII 100; return (BS.pack rw)))
->     let txHashs                = CP.map C.hash txs'
->         (root, m)              = createMerkleRootAndMap txHashs
->         (hABCDEFGH, hIJKLMNOP) = m ! root
->         (hIJKL    , hMNOP)     = m ! hIJKLMNOP
->         (hIJ      , hKL)       = m ! hIJKL
->         (hK       , hL)        = m ! hKL
+>     let hashList               = CP.map C.hash txs'
 >         hkData                 = S.index txs' 10
 >         hK'                    = C.hash hkData
->         merklePath             = [Right hL, Left hIJ, Right hMNOP, Left hABCDEFGH]
->         mkMerkleTreeMap'       = mkMerkleTreeMap (S.empty |> "00" |> "01" |> "02" |> "03")
->         merklePathTo'          = merklePathTo hK' (mkMerkleTreeMap txHashs)
->     describe "t1" $ do
->         it "hK" $ hK' `shouldBe` hK
->         it "merklePath" $ merklePath `shouldBe` merklePath
->         it "isTxInBlock" $ isTxInBlock hkData merklePath root `shouldBe` True
->         it "merklePathTo" $ merklePathTo' `shouldBe` merklePath
->         it "mkMerkleTreeMap" $ mkMerkleTreeMap' `shouldBe`
->            M.fromList [("00",MerkleInfo { identity = "00", neighbor = Just (Right "01")
->                                         , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
->                       ,("01",MerkleInfo { identity = "01", neighbor = Just (Left "00")
->                                         , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
->                       ,("02",MerkleInfo { identity = "02", neighbor = Just (Right "03")
->                                         , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
->                       ,("03",MerkleInfo { identity = "03", neighbor = Just (Left "02")
->                                         , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
->                       ,("\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2",MerkleInfo {identity = "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2", neighbor = Just (Right "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
->                       ,("\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192",MerkleInfo {identity = "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192", neighbor = Just (Left "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
->                       ,("\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243",MerkleInfo {identity = "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243", neighbor = Nothing, parent = Nothing})]
+>         m                      = mkMerkleTreeMap hashList
+>         -- (Left hABCDEFGH, hIJKLMNOP)
+>         (MerkleInfo _ (Just (Right       hL)) (Just hKL))               = m ! hK'
+>         (MerkleInfo _ (Just (Left       hIJ)) (Just hIJKL))             = m ! hKL
+>         (MerkleInfo _ (Just (Right    hMNOP)) (Just hIJKLMNOP))         = m ! hIJKL
+>         (MerkleInfo _ (Just (Left hABCDEFGH)) (Just hABCDEFGHIJKLMNOP)) = m ! hIJKLMNOP
+>     describe "t2" $ do
+>         it "root" $
+>             createMerkleRoot hashList
+>             `shouldBe`
+>             hABCDEFGHIJKLMNOP
+>         it "merklePath" $
+>             merklePathTo hK' (mkMerkleTreeMap hashList)
+>             `shouldBe`
+>             [Right hL, Left hIJ, Right hMNOP, Left hABCDEFGH]
+>         it "mkMerkleTreeMap" $
+>             mkMerkleTreeMap (S.empty |> "00" |> "01" |> "02" |> "03")
+>             `shouldBe`
+>             M.fromList [("00",MerkleInfo { identity = "00", neighbor = Just (Right "01")
+>                                          , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
+>                        ,("01",MerkleInfo { identity = "01", neighbor = Just (Left "00")
+>                                          , parent = Just "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"})
+>                        ,("02",MerkleInfo { identity = "02", neighbor = Just (Right "03")
+>                                          , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
+>                        ,("03",MerkleInfo { identity = "03", neighbor = Just (Left "02")
+>                                          , parent = Just "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"})
+>                        ,("\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2",MerkleInfo {identity = "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2", neighbor = Just (Right "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
+>                        ,("\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192",MerkleInfo {identity = "\194Wm\216T\SUB\"\\\206\SOHTu\226\213\171\186\201\159${\145DzS\137\130n+\198'@\192", neighbor = Just (Left "\136\139\EM\164;\NAK\SYN\131\200x\149\246!\GS\159\134@\249{\220\142\243/\ETX\219\224W\200\245\229m2"), parent = Just "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243"})
+>                        ,("\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243",MerkleInfo {identity = "\156\160c\144$\227\138Z\254|x\231wk\DC3 \228;\235\130:\200\DLE\\0 \131\134w\130\163\243", neighbor = Nothing, parent = Nothing})]
 
----------------
-
+Once the light peer receives the merkle path from the full peer it can
+verify that the transaction is in the block:
 
 > isTxInBlock :: Transaction -> MerklePath -> HashDigest -> Bool
-> isTxInBlock tx mp mr = loop (C.hash tx) mp == mr
+> isTxInBlock tx mp merkleRoot = loop (C.hash tx) mp == merkleRoot
 >   where
 >     loop h          []  = h
 >     loop h (Left  x:xs) = go x h xs
 >     loop h (Right x:xs) = go h x xs
 >     go x y xs           = loop (concatHash x y) xs
-
-> createMerkleRootAndMap :: HashList -> (HashDigest, M.Map HashDigest (HashDigest, HashDigest))
-> createMerkleRootAndMap hashList0
->     | S.null hashList0 = (nullHash, M.empty)
->     | otherwise        = runST $ do
->         hl <- newSTRef (hashList0, M.empty)
->         loop hl
->   where
->     loop hl = do
->         (hashList, m) <- readSTRef hl
->         if S.length hashList == 1 then
->             return (S.index hashList 0, m)
->         else do
->             when (odd $ S.length hashList) $
->                 modifySTRef hl (\(hl',m') -> (hl' |> S.index hashList (S.length hashList - 1), m'))
->             newHashList   <- newSTRef (S.empty, m)
->             (hashList',_) <- readSTRef hl
->             forM_ (S.chunksOf 2 hashList') $ \x -> do
->                 let h = concatHash (S.index x 0) (S.index x 1)
->                 modifySTRef' newHashList (\(hl',m') ->
->                     ( hl' |> h
->                     , M.insert h (S.index x 0, S.index x 1) m'))
->             loop newHashList
-
-
-{-
-import           Crypto.Hash.SHA256    as C  (hash)
-import           Data.Sequence         as S
-:set -XOverloadedStrings
-hashList = S.empty |> C.hash "00" |> C.hash "01" |> C.hash "11"
-:b createMerkleRoot
-createMerkleRoot hashList
--}
+>
+> t3 :: Spec
+> t3 = do
+>     txs' <- runIO (S.replicateM 15 (do rw <- randomWord randomASCII 100; return (BS.pack rw)))
+>     let hashList   = CP.map C.hash txs'
+>         hKTX       = S.index txs' 10
+>         hK         = C.hash hKTX
+>         notHKTX    = S.index txs'  9
+>         merkleRoot = createMerkleRoot hashList
+>         merklePath = merklePathTo hK (mkMerkleTreeMap hashList)
+>     describe "t3" $ do
+>         it "hK" $
+>             C.hash (S.index txs' 10) `shouldBe` hK
+>         it "isTxInBlock True"  $
+>             isTxInBlock    hKTX merklePath merkleRoot `shouldBe` True
+>         it "isTxInBlock False" $
+>             isTxInBlock notHKTX merklePath merkleRoot `shouldBe` False
 
 Credits : Mastering Bitcoin
