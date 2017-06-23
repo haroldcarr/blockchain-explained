@@ -82,7 +82,7 @@ the focus is on `bMerkleRoot`.
 merkle root
 -----------
 
-The merkle root a is hash of the hash of the bytes that make up each
+The merkle root is a hash of the hash of the bytes that make up each
 transaction.
 
 The bytes of all transactions in the block are individually hashed,
