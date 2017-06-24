@@ -76,8 +76,10 @@ type BTimestamp = ByteString
 
 The exposition [The Chain in
 Blockchain](%22http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html%22)
-explained how blocks are linked in chains using `bPrevHash` etc. Here
-the focus is on `bMerkleRoot`.
+explained how blocks are linked in chains using `bPrevHash` etc. The
+above definitions are to relate the current exposition to the previous
+exposition. They are not futher used below. Here the focus is on
+`bMerkleRoot`.
 
 merkle root
 -----------
@@ -90,9 +92,9 @@ forming a list of hashes:
 
 ```haskell
 type HashDigest = ByteString
-type HashList   = Seq HashDigest
+type Hashes     = Seq HashDigest
 
-txHashes :: Block -> HashList
+txHashes :: Block -> Hashes
 txHashes (Block _ transactions) = CP.map C.hash transactions
 ```
 
@@ -114,30 +116,30 @@ creating a merkle root
 ----------------------
 
 ```haskell
-createMerkleRoot :: HashList -> HashDigest
-createMerkleRoot hl0
-    | S.null hl0 = nullHash
-    | otherwise  = loop hl0
+createMerkleRoot :: Hashes -> HashDigest
+createMerkleRoot hs0
+    | S.null hs0 = nullHash
+    | otherwise  = loop hs0
   where
-    loop hl =
-        if S.length hl == 1 then S.index hl 0
-        else loop (combine (dupWhenOdd hl))
+    loop hs =
+        if S.length hs == 1 then S.index hs 0
+        else loop (combine (dupWhenOdd hs))
 
     -- when odd, duplicate last hash
-    dupWhenOdd hl =
-        if odd $ S.length hl then hl |> S.index hl (S.length hl - 1)
-        else hl
+    dupWhenOdd hs =
+        if odd $ S.length hs then hs |> S.index hs (S.length hs - 1)
+        else hs
 
-    -- Make newHashList (1/2 size of given hashList)
-    -- where every element of newHashList is made
-    -- by taking adjacent pairs of given hashList,
+    -- Make newHashes (1/2 size of given hashes)
+    -- where every element of newHashes is made
+    -- by taking adjacent pairs of given hashes,
     -- concatenating their contents
     -- then hashing that concatenated contents.
-    combine hl = runST $ do
-        newHashList <- newSTRef S.empty
-        forM_ (S.chunksOf 2 hl) $ \x ->
-            modifySTRef' newHashList (|> concatHash (S.index x 0) (S.index x 1))
-        readSTRef newHashList
+    combine hs = runST $ do
+        newHashes <- newSTRef S.empty
+        forM_ (S.chunksOf 2 hs) $ \x ->
+            modifySTRef' newHashes (|> concatHash (S.index x 0) (S.index x 1))
+        readSTRef newHashes
 
 nullHash :: HashDigest
 nullHash = BS.replicate 32 (chr 0)
@@ -207,33 +209,33 @@ type MerkleTreeMap = M.Map HashDigest MerkleInfo
 
 -- | This function has the same structure as `createMerkleRoot`.
 -- The difference is that this one creates a tree (using a Map).
-createMerkleTreeMap :: HashList -> MerkleTreeMap
-createMerkleTreeMap hl0
-    | S.null hl0 = M.empty
-    | otherwise  = loop (hl0, M.empty)
+createMerkleTreeMap :: Hashes -> MerkleTreeMap
+createMerkleTreeMap hs0
+    | S.null hs0 = M.empty
+    | otherwise  = loop (hs0, M.empty)
   where
-    loop (hl, m) =
-        if S.length hl == 1 then
-            let h = S.index hl 0
+    loop (hs, m) =
+        if S.length hs == 1 then
+            let h = S.index hs 0
             in M.insert h (MerkleInfo h Nothing Nothing) m
-        else loop (combine (dupWhenOdd hl) m)
+        else loop (combine (dupWhenOdd hs) m)
 
-    dupWhenOdd hl =
-        if odd $ S.length hl then hl |> S.index hl (S.length hl - 1)
-        else hl
+    dupWhenOdd hs =
+        if odd $ S.length hs then hs |> S.index hs (S.length hs - 1)
+        else hs
 
-    combine hl m = runST $ do
-        newHashListAndMap <- newSTRef (S.empty, m)
-        forM_ (S.chunksOf 2 hl) $ \x -> do
+    combine hs m = runST $ do
+        newHashesAndMap <- newSTRef (S.empty, m)
+        forM_ (S.chunksOf 2 hs) $ \x -> do
             let parentHash = concatHash (S.index x 0) (S.index x 1)
                 leftHash   = S.index x 0
                 rightHash  = S.index x 1
                 l          = MerkleInfo leftHash  (Just (Right rightHash)) (Just parentHash)
                 r          = MerkleInfo rightHash (Just (Left  leftHash))  (Just parentHash)
-            modifySTRef' newHashListAndMap (\(hl', m') ->
-                ( hl' |> parentHash
+            modifySTRef' newHashesAndMap (\(hs', m') ->
+                ( hs' |> parentHash
                 , M.insert leftHash l (M.insert rightHash r m')))
-        readSTRef newHashListAndMap
+        readSTRef newHashesAndMap
 ```
 
 Then, given a hash of a transaction and the tree created above, create a
@@ -255,11 +257,11 @@ t2 = do
     -- create TXs A .. O
     txs' <- runIO (S.replicateM 15 (do rw <- randomWord randomASCII 100; return (BS.pack rw)))
         -- create TX hashes H_A .. H_O (see the diagram above)
-    let hashList               = CP.map C.hash txs'
-        hkData                 = S.index txs' 10
-        hK'                    = C.hash hkData
+    let hashes = CP.map C.hash txs'
+        hkData = S.index txs' 10
+        hK'    = C.hash hkData
         -- this will dup H_O to add H_P
-        m                      = createMerkleTreeMap hashList
+        m      = createMerkleTreeMap hashes
         -- manually create the pieces needed for the merkle path for H_K
         (MerkleInfo _ (Just (Right       hL)) (Just hKL))               = m ! hK'
         (MerkleInfo _ (Just (Left       hIJ)) (Just hIJKL))             = m ! hKL
@@ -267,11 +269,11 @@ t2 = do
         (MerkleInfo _ (Just (Left hABCDEFGH)) (Just hABCDEFGHIJKLMNOP)) = m ! hIJKLMNOP
     describe "t2" $ do
         it "root" $
-            createMerkleRoot hashList
+            createMerkleRoot hashes
             `shouldBe`
             hABCDEFGHIJKLMNOP
         it "merklePath" $
-            merklePathTo hK' (createMerkleTreeMap hashList)
+            merklePathTo hK' (createMerkleTreeMap hashes)
             `shouldBe`
             S.empty |> Right hL |> Left hIJ |> Right hMNOP |> Left hABCDEFGH
         it "createMerkleTreeMap" $
@@ -309,12 +311,12 @@ isTxInBlock tx mp merkleRoot = loop (C.hash tx) mp == merkleRoot
 t3 :: Spec
 t3 = do
     txs' <- runIO (S.replicateM 15 (do rw <- randomWord randomASCII 100; return (BS.pack rw)))
-    let hashList   = CP.map C.hash txs'
+    let hashes     = CP.map C.hash txs'
         notHKTX    = S.index txs'  9
         hKTX       = S.index txs' 10
         hK         = C.hash hKTX
-        merkleRoot = createMerkleRoot hashList
-        merklePath = merklePathTo hK (createMerkleTreeMap hashList)
+        merkleRoot = createMerkleRoot hashes
+        merklePath = merklePathTo hK (createMerkleTreeMap hashes)
     describe "t3" $ do
         it "hK" $
             C.hash (S.index txs' 10) `shouldBe` hK
@@ -341,7 +343,8 @@ Diagrams from [Mastering
 Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/) by
 Andreas M. Antonopoulos.
 
-Thanks to Ulises Cerviño Beresi, TBD
+Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, TBD for
+pre-publication feedback.
 
 source code and discussion
 --------------------------
