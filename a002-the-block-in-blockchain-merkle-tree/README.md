@@ -75,7 +75,7 @@ type BTimestamp = ByteString
 ```
 
 The exposition
-[The Chain in Blockchain](%22http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html%22)
+[The Chain in Blockchain](http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html)
 explained how blocks are linked in chains using `bPrevHash` etc. The
 above definitions are to relate the current exposition to the previous
 exposition. They are not futher used below. Here the focus is on
