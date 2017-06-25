@@ -96,9 +96,8 @@ creating a merkle root
 ----------------------
 
 > createMerkleRoot :: Hashes -> HashDigest
-> createMerkleRoot hs0
->     | S.null hs0 = nullHash
->     | otherwise  = loop hs0
+> createMerkleRoot (viewl -> EmptyL) = nullHash
+> createMerkleRoot              hs0  = loop hs0
 >   where
 >     loop hs =
 >         if S.length hs == 1 then S.index hs 0

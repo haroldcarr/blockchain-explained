@@ -54,7 +54,7 @@ type Transaction  = ByteString
 ```
 
 In a "real" blockchain, this is where "smart contracts" would be
-involved.
+involved (a subject of a future exposition).
 
 The most important part, for now, is the header:
 
@@ -74,8 +74,8 @@ type BHash      = ByteString
 type BTimestamp = ByteString
 ```
 
-The exposition [The Chain in
-Blockchain](%22http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html%22)
+The exposition
+[The Chain in Blockchain](%22http://haroldcarr.com/posts/2017-06-19-the-chain-in-blockchain.html%22)
 explained how blocks are linked in chains using `bPrevHash` etc. The
 above definitions are to relate the current exposition to the previous
 exposition. They are not futher used below. Here the focus is on
@@ -117,9 +117,8 @@ creating a merkle root
 
 ```haskell
 createMerkleRoot :: Hashes -> HashDigest
-createMerkleRoot hs0
-    | S.null hs0 = nullHash
-    | otherwise  = loop hs0
+createMerkleRoot (viewl -> EmptyL) = nullHash
+createMerkleRoot              hs0  = loop hs0
   where
     loop hs =
         if S.length hs == 1 then S.index hs 0
@@ -210,9 +209,8 @@ type MerkleTreeMap = M.Map HashDigest MerkleInfo
 -- | This function has the same structure as `createMerkleRoot`.
 -- The difference is that this one creates a tree (using a Map).
 createMerkleTreeMap :: Hashes -> MerkleTreeMap
-createMerkleTreeMap hs0
-    | S.null hs0 = M.empty
-    | otherwise  = loop (hs0, M.empty)
+createMerkleTreeMap (viewl -> EmptyL) = M.empty
+createMerkleTreeMap              hs0  = loop (hs0, M.empty)
   where
     loop (hs, m) =
         if S.length hs == 1 then
