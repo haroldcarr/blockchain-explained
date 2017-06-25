@@ -311,7 +311,7 @@ Diagrams from
 [Mastering Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/)
 by Andreas M. Antonopoulos.
 
-Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, TBD for pre-publication feedback.
+Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, Alejandro Serra Mena, TBD for pre-publication feedback.
 
 source code and discussion
 --------------------------
