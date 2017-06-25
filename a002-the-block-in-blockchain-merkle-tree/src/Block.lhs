@@ -45,7 +45,7 @@ Here the "transactions" are uninterpreted opaque data:
 
 > type Transaction  = ByteString
 
-In a "real" blockchain, this is where "smart contracts" would be involved.
+In a "real" blockchain, this is where "smart contracts" would be involved (a subject of a future exposition).
 
 The most important part, for now, is the header:
 
@@ -188,9 +188,8 @@ To create a merkle path an explicit tree may be used:
 > -- | This function has the same structure as `createMerkleRoot`.
 > -- The difference is that this one creates a tree (using a Map).
 > createMerkleTreeMap :: Hashes -> MerkleTreeMap
-> createMerkleTreeMap hs0
->     | S.null hs0 = M.empty
->     | otherwise  = loop (hs0, M.empty)
+> createMerkleTreeMap (viewl -> EmptyL) = M.empty
+> createMerkleTreeMap              hs0  = loop (hs0, M.empty)
 >   where
 >     loop (hs, m) =
 >         if S.length hs == 1 then
