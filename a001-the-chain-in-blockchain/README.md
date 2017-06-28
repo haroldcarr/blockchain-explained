@@ -1,7 +1,8 @@
 the chain in blockchain explained
 ---------------------------------
 
-This post develops a simple blockchain with the goal of understanding the basics of the chain.
+This post develops a simple blockchain with the goal of understanding
+the basics of the chain.
 
 setup:
 
@@ -31,11 +32,10 @@ For the purposes of this exposition, a block in the chain is:
 
 ```haskell
 data Block =
-  Block { bIndex     :: ! BIndex     -- ^ index of this block in the chain
+  Block { bIndex     :: ! BIndex     -- ^ index of this block in the chain -- for debugging
         , bPrevHash  :: ! BHash      -- ^ hash of previous block
         , bTimestamp :: ! BTimestamp -- ^ when this block was created
         , bData      :: ! BData      -- ^ this block's data
-        , bHash      :: ! BHash      -- ^ this block's hash
         } deriving (Eq, Show)
 ```
 
@@ -57,8 +57,7 @@ genesisBlock =
      prevHash = "0"
      ts       = "2017-03-05 10:49:02.084473 PST"
      bdata    = "GENESIS BLOCK DATA"
-     bhash    = calculateHash idx prevHash ts bdata
- in Block idx prevHash ts bdata bhash
+ in Block idx prevHash ts bdata
 ```
 
 begins the chain:
@@ -72,17 +71,17 @@ For this exposition, the only purpose of the genesis block is to provide
 a verifiable `prevHash` for the first "real" block that gets added to
 the chain.
 
-The chain is tamper-proof because each block contains a hash of its
-contents.
+The chain is tamper-proof because each block contains a hash of of the
+contents of the previous block:
 
 ```haskell
 calculateHash :: BIndex -> BHash -> BTimestamp -> BData -> BHash
 calculateHash i p t d = C.hash (BS.concat [BS.pack $ show i, p, t, d])
 ```
 
-Since a block's contents includes the hash of the previous block, once a
-block has been added to a chain, neither the block nor the previous
-contents of the chain can be altered without detection.
+Since a block contains the hash of the previous block, once a block has
+been added to a chain, the previous contents of the chain cannot be
+altered without detection.
 
 For example, using the following functions:
 
@@ -92,16 +91,16 @@ addBlock ts bd bc = bc |> makeNextBlock bc ts bd
 
 makeNextBlock :: Blockchain -> BTimestamp -> BData -> Block
 makeNextBlock bc ts bd =
-  let (i, ph, _, _, h) = nextBlockInfo bc ts bd
-  in Block i ph ts bd h
+  let (i, ph, _, _) = nextBlockInfo bc ts bd
+  in Block i ph ts bd
 
 nextBlockInfo :: Blockchain -> BTimestamp -> BData
-              -> (BIndex, BHash, BTimestamp, BData, BHash)
+              -> (BIndex, BHash, BTimestamp, BData)
 nextBlockInfo bc ts bd =
   let prev = getLastCommittedBlock bc
       i    = bIndex prev + 1
-      ph   = bHash prev
-  in (i, ph, ts, bd, calculateHash i ph ts bd)
+      ph   = calculateHash (bIndex prev) (bPrevHash prev) (bTimestamp prev) (bData prev)
+  in (i, ph, ts, bd)
 
 getLastCommittedBlock :: Blockchain -> Block
 getLastCommittedBlock bc = S.index bc (S.length bc - 1)
@@ -164,10 +163,13 @@ t2 =
       isValidBlockchain badChain1i `shouldBe` Left "invalid bIndex 1"
     it "invalid bPrevHash 1" $
       isValidBlockchain badChain1p `shouldBe` Left "invalid bPrevHash 1"
-    it "invalid bHash 1" $
-      isValidBlockchain badChain1d `shouldBe` Left "invalid bHash 1"
-    it "invalid bHash 2" $
-      isValidBlockchain badChain12 `shouldBe` Left "invalid bHash 2"
+    it "invalid bPrevHash 2" $
+      isValidBlockchain badChain1d `shouldBe` Left "invalid bPrevHash 2"
+    -- This shows that it IS possible to alter the last block in the chain.
+    -- In a "real" blockchain, consensus and subsequent blocks added to
+    -- the chain handles this case.
+    it "changed last element in chain" $
+      isValidBlockchain badChain12 `shouldBe` Right ()
 ```
 
 where
@@ -189,9 +191,8 @@ isValidBlockchain bc = do
 -- otherwise `Left reason`
 isValidBlock :: (Block, Block) -> Either Text ()
 isValidBlock (validBlock, checkBlock) = do
-  when (bIndex validBlock + 1 /= bIndex    checkBlock) (fail' "invalid bIndex")
-  when (bHash  validBlock     /= bPrevHash checkBlock) (fail' "invalid bPrevHash")
-  when (hashBlock checkBlock  /= bHash     checkBlock) (fail' "invalid bHash")
+  when (bIndex    validBlock + 1 /= bIndex    checkBlock) (fail' "invalid bIndex")
+  when (hashBlock validBlock     /= bPrevHash checkBlock) (fail' "invalid bPrevHash")
   return ()
  where
   fail' msg   = Left (msg <> " " <> tshow (bIndex validBlock + 1))
@@ -218,9 +219,7 @@ A blockchain is a list of blocks, where each block
 
 -   contains data that may be interpreted as smart contracts
 -   contains the hash of the previous block
--   contains a hash of itself
-    -   the fact that the self hash is created with the previous hash
-        makes the chain tamper-proof
+-   the chained hashes makes the chain tamper-proof
 
 ```haskell
 t3 :: Spec
@@ -239,19 +238,16 @@ t3 =
              , bPrevHash = "0"
              , bTimestamp = "2017-03-05 10:49:02.084473 PST"
              , bData = "GENESIS BLOCK DATA"
-             , bHash = "'\234-\147\141\"\142\235\CAN \246\158<\159\199s\174\\\225<\174\188O\150oM\217\DC3'\237\DC4n"
              }
      , Block { bIndex = 1
              , bPrevHash = "'\234-\147\141\"\142\235\CAN \246\158<\159\199s\174\\\225<\174\188O\150oM\217\DC3'\237\DC4n"
              , bTimestamp = "2017-06-11 15:49:02.084473 PST"
              , bData = "June 11 data"
-             , bHash = "\145\238k24\175\147I\EOT\208\204\210\190s\192<b:\SOH\215\DC1\254)\173\EOT\186\220\US\SYNf\191\149"
              }
      , Block { bIndex = 2
              , bPrevHash = "\145\238k24\175\147I\EOT\208\204\210\190s\192<b:\SOH\215\DC1\254)\173\EOT\186\220\US\SYNf\191\149"
              , bTimestamp = "2017-06-12 15:49:02.084473 PST"
              , bData = "June 12 data"
-             , bHash = "\172\DEL\f\158e\DC4\159Us\188ny\235\v\146\201\138\244\179w\160\151\196;\203\165\232\145\156X\206$"
              }
      ]
 ```
