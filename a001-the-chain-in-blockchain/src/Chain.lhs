@@ -224,7 +224,7 @@ A blockchain is a list of blocks, where each block
 source code and discussion
 --------------------------
 
-Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena for pre-publication feedback.
+Thanks to Ulises Cerviño Beresi, Heath Matlock, Alejandro Serra Mena and Mark Moir for pre-publication feedback.
 
 The code for this exposition is available at : https://github.com/haroldcarr/blockchain-explained/tree/master/a001-the-chain-in-blockchain
 

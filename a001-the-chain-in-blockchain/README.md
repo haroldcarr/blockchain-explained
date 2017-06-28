@@ -255,7 +255,7 @@ t3 =
 source code and discussion
 --------------------------
 
-Thanks to Ulises Cerviño Beresi, Heath Matlock and Alejandro Serra Mena
+Thanks to Ulises Cerviño Beresi, Heath Matlock, Alejandro Serra Mena and Mark Moir
 for pre-publication feedback.
 
 The code for this exposition is available at :
