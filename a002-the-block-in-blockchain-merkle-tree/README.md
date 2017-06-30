@@ -62,7 +62,7 @@ The most important part, for now, is the header:
 data BlockHeader =
     BlockHeader {
           bPrevHash   :: ! BHash      -- ^ hash of previous block
-        , bMerkleRoot :: ! BHash      -- ^ hash of root of this block's transactions
+        , bMerkleRoot :: ! BHash      -- ^ root hash of this block's transactions
         , bTimestamp  :: ! BTimestamp -- ^ when this block was created
     } deriving (Eq, Show)
 ```
@@ -115,6 +115,12 @@ root":
 creating a merkle root
 ----------------------
 
+The `createMerkleRoot` function is written to mimic `create_merkle` in
+[`create_merkle`](http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#merkle_trees)
+(scroll down to "Example 7-1. Building a merkle tree"). That code is a
+modification of the "real" `generate_merkel_root` code in
+[libbitcoin](https://github.com/libbitcoin/libbitcoin/blob/master/src/chain/block.cpp)
+
 ```haskell
 createMerkleRoot :: Hashes -> HashDigest
 createMerkleRoot (viewl -> EmptyL) = nullHash
@@ -160,8 +166,8 @@ t1 =
 The merkle root, besides acting as a "signature" of the transactions,
 can be used by lightweight peers to ensure that a transaction is in a
 block without needing to access (i.e., over a network connection) all
-the transactions in a block (e.g., Bitcoin's [Simplified Payment
-Verification](%22http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#_merkle_trees_and_simplified_payment_verification_spv%22)).
+the transactions in a block (e.g., Bitcoin's
+[Simplified Payment Verification](http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#_merkle_trees_and_simplified_payment_verification_spv)).
 
 merkle path
 -----------
@@ -331,24 +337,24 @@ summary
     data (e.g., "transactions")
 -   the hash makes it possible to detect changes to the data
 -   the merkle root also enables lightweight peers to verify a
-    particular transaction is in a block without needing access to to
-    the other transactions
+    particular transaction is in a block without needing access to all
+    transactions in a block
 
 credits
 -------
 
-Diagrams from [Mastering
-Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/) by
-Andreas M. Antonopoulos.
+Diagrams from
+[Mastering Bitcoin](http://chimera.labs.oreilly.com/books/1234000001802/)
+by Andreas M. Antonopoulos.
 
-Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, Alejandro Serra Mena, TBD for
-pre-publication feedback.
+Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, Alejandro
+Serra Mena, TBD for pre-publication feedback.
 
 source code and discussion
 --------------------------
 
 The code for this exposition is available at :
-https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree
+[gitbug](https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree)
 
 run the code: `stack test`
 

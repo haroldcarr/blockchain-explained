@@ -52,7 +52,7 @@ The most important part, for now, is the header:
 > data BlockHeader =
 >     BlockHeader {
 >           bPrevHash   :: ! BHash      -- ^ hash of previous block
->         , bMerkleRoot :: ! BHash      -- ^ hash of root of this block's transactions
+>         , bMerkleRoot :: ! BHash      -- ^ root hash of this block's transactions
 >         , bTimestamp  :: ! BTimestamp -- ^ when this block was created
 >     } deriving (Eq, Show)
 
@@ -94,6 +94,12 @@ parents until there is a single node.  That node is the "merkle root":
 
 creating a merkle root
 ----------------------
+
+The `createMerkleRoot` function is written to mimic `create_merkle` in
+[`create_merkle`](http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#merkle_trees)
+(scroll down to "Example 7-1. Building a merkle tree").
+That code is a modification of the "real" `generate_merkel_root` code in
+[libbitcoin](https://github.com/libbitcoin/libbitcoin/blob/master/src/chain/block.cpp)
 
 > createMerkleRoot :: Hashes -> HashDigest
 > createMerkleRoot (viewl -> EmptyL) = nullHash
@@ -302,7 +308,7 @@ summary
 - a block may contain a merkle root : essentially a signature of its data (e.g., "transactions")
 - the hash makes it possible to detect changes to the data
 - the merkle root also enables lightweight peers to verify a particular transaction is
-  in a block without needing access to to the other transactions
+  in a block without needing access to all transactions in a block
 
 credits
 -------
