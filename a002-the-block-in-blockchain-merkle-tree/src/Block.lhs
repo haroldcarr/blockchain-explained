@@ -95,7 +95,7 @@ parents until there is a single node.  That node is the "merkle root":
 creating a merkle root
 ----------------------
 
-The `createMerkleRoot` function is written to mimic `create_merkle` in
+The `createMerkleRoot` function below is written to mimic `create_merkle` in
 [`create_merkle`](http://chimera.labs.oreilly.com/books/1234000001802/ch07.html#merkle_trees)
 (scroll down to "Example 7-1. Building a merkle tree").
 That code is a modification of the "real" `generate_merkel_root` code in
@@ -322,7 +322,8 @@ Thanks to Ulises Cerviño Beresi, Victor Cacciari Miraldo, Alejandro Serra Mena,
 source code and discussion
 --------------------------
 
-The code for this exposition is available at : https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree
+The code for this exposition is available at
+[github](https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree)
 
 run the code: `stack test`
 

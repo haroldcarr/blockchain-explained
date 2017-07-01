@@ -353,8 +353,8 @@ Serra Mena, TBD for pre-publication feedback.
 source code and discussion
 --------------------------
 
-The code for this exposition is available at :
-[gitbug](https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree)
+The code for this exposition is available at
+[github](https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree)
 
 run the code: `stack test`
 
