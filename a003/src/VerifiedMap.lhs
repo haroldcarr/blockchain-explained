@@ -95,6 +95,19 @@
 >       GT -> let r = lr (_right n) in btBin (_key n) (_val n) (_left n) r
 >   lr = btInsert k v
 
+       LT -> let (l,btb) = lr (_left  n) in btb l         (_right n)
+       GT -> let (r,btb) = lr (_right n) in btb (_left n) r
+   lr n = (btInsert k v n , btBin (_key n) (_val n))
+
+a003-0.0.0: test (suite: test)
+
+Progress: 3/4test: No match in record selector _key
+
+Completed 4 action(s).
+Test suite failure for package a003-0.0.0
+    test:  exited with: ExitFailure 1
+
+
 > -- | Lookup
 > btLookup :: (Ord k , Ser2 k v)
 >          => k -> BTree k v -> BTreeProver (Maybe v)
