@@ -1,3 +1,3 @@
-THE_FILE=Chain
+THE_FILE=VerifiedMap
 
 include ../Makefile
