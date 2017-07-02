@@ -4,5 +4,7 @@ import           VerifiedMap
 import           Test.Hspec
 
 spec :: Spec
-spec =
-    t1
+spec = do
+  t1
+  t2
+  t3
