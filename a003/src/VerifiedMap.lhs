@@ -1,7 +1,7 @@
 authenticated data structures (merkle trees)
 -----------------------------
 
-This exposition focuses on a higher-level view of Merkle Trees along the lines
+This exposition focuses on high-level view of Merkle Trees along the lines
 presented in the paper
 [Authenticated Data Structures, Generically](http://www.cs.umd.edu/~amiller/gpads/).
 
@@ -76,7 +76,7 @@ binary-tree implementation of `VerifiedMap`
 
 This exposition will use a simple binary tree implementation to enable
 the focus to stay on the proofs and verification functions (rather than
-the map implemenation).
+the map implementation).
 
 A conventional `BTree` is augemented to include the hashes of the left and right branches.
 
@@ -90,7 +90,7 @@ A conventional `BTree` is augemented to include the hashes of the left and right
 >         , _authR :: ! Hash        -- ^ merkle root of right subtree
 >         }
 >   deriving (Eq, Show, Generic)
-> instance (Ser2 k v) => Serialize (BTree k v)
+> instance (Ser2 k v) => Serialize (BTree k v) -- not used in this exposition
 
 where
 
@@ -198,16 +198,18 @@ The evidence is placed in a proof stream during `lookup` traversal by:
 > btEvLT n = tell [EvLT (_authR n) (btKvHash n)]
 > btEvGT n = tell [EvGT (_authL n) (btKvHash n)]
 
+\begin{verbatim}
                10
      5                    15
 3         7         13          17
                   11
+\end{verbatim}
 
 > ex :: BTree Int Int
 > ex = btInsert 11 11 (btInsert 13 13 (btInsert 17 17 (btInsert 15 15
 >                      (btInsert 3  3 (btInsert  7  7 (btInsert  5  5
 >                                                      (btLeaf 10 10)))))))
-
+> -- | make the tests easier to read
 > evToL :: (Maybe a, [BTreeEvidence]) -> (Maybe a, [String])
 > evToL (ma, evs) = (ma, foldr (\ev a -> evl ev : a) [] evs)
 >  where evl ev = case ev of EvEQ _ _ -> "EvEQ"; EvLT _ _ -> "EvLT"; EvGT _ _ -> "EvGT"
@@ -239,8 +241,8 @@ verify evidence
 >   return (Just root0 == myRoot)
 >  where
 >   go :: [BTreeEvidence] -> Maybe MerkleRoot
->   go []               = Nothing
->   go (EvEQ l r:_)   = return $ shaConcat [ l , btKvHashRaw k v , r ]
+>   go             []    = Nothing
+>   go (EvEQ l  r : _)   = return $ shaConcat [ l , btKvHashRaw k v , r ]
 >   go (EvLT r kv : evs) = (\x -> shaConcat [x , kv , r]) <$> go evs
 >   go (EvGT l kv : evs) = (\x -> shaConcat [l , kv , x]) <$> go evs
 >
@@ -264,7 +266,8 @@ verify evidence
 >       it "btVerify 14 14" $ runReader (btVerify root0 (14::Int) (14::Int)) proof17
 >          `shouldBe` False
 
-------------------------------------------------------------------------------
+make `BTree` a `VerifiedMap`
+----------------------------
 
 > instance VerifiedMap BTree where
 >   type Evidence  BTree     = [BTreeEvidence]
@@ -276,8 +279,8 @@ verify evidence
 >   lookup   = btLookup
 >   verify _ = btVerify
 
-------------------------------------------------------------------------------
--- Testing
+test using interface
+--------------------
 
 > t3 :: Spec
 > t3 = do
@@ -291,24 +294,23 @@ verify evidence
 > test maxtree maxlkups = do
 >   ks <- shuffle [1 .. maxtree]
 >   vs <- shuffle [1 .. maxtree]
->   let t     = makeTree (zip ks vs)
->   let root0 = btMerkleRoot t
->   -- putStrLn $ "Tree root is: " ++ show root0
+>   -- build a BTree
+>   let t     = foldr (\(k , v) acc -> btInsert k v acc) Tip (zip ks vs)
+>   let root0 = root t
 >   res <- mapM (testLookup root0 t) (take maxlkups ks)
 >   return (t, and res)
 >  where
->   testLookup :: MerkleRoot -> BTree Int Int -> Int -> IO Bool
+>   -- use generic `lookup` and `verify` in test
 >   testLookup root0 tr k = do
->     let (val, proof) = runWriter $ btLookup k tr
+>     let (val, proof) = runWriter $ lookup k tr
 >     case val of
 >       Nothing -> putStrLn ("Can't find key: " ++ show k) >> return False
 >       Just v  ->
->         let msg = "btVerify k v: (" ++ show k ++ "," ++ show v ++ "): "
->         in if runReader (btVerify root0 k v) proof then return True
->            else putStrLn (msg ++ "FAIL")             >> return False
-
-> makeTree :: (Ord k, Ser2 k v) => [ (k , v) ] -> BTree k v
-> makeTree = foldr (\(k , v) t -> btInsert k v t) Tip
+>         let msg = "verify k v: (" ++ show k ++ "," ++ show v ++ "): "
+>         in if runReader (verify (Proxy::Proxy BTree) root0 k v) proof then
+>              return True
+>            else
+>              putStrLn (msg ++ "FAIL") >> return False
 
 > fisherYatesStep :: RandomGen g
 >                 => (M.Map Int a, g) -> (Int, a) -> (M.Map Int a, g)
@@ -327,22 +329,4 @@ verify evidence
 
 > shuffle :: [a] -> IO [a]
 > shuffle l = getStdRandom (fisherYates l)
-
-------------------------------------------------------------------------------
-
-> -- | Pretty printer.
-> btPretty :: (Show k) => BTree k v -> IO ()
-> btPretty = mapM_ putStrLn . draw
->   where
->     draw :: (Show k) => BTree k v -> [String]
->     draw Tip                   = []
->     draw (Bin k _ Tip Tip _ _) = [show k]
->     draw (Bin k _ l   r   _ _) = show k : drawSubTrees [l,r]
->       where
->         drawSubTrees []     = []
->         drawSubTrees [t]    = "|" : shift "r- " "   " (draw t)
->         drawSubTrees (t:ts) = "|" : shift "l- " "|  " (draw t) ++ drawSubTrees ts
->         shift first other   = zipWith (++) (first : repeat other)
-
-btPretty example
 
