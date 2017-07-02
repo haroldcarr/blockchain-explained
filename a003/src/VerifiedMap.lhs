@@ -90,10 +90,10 @@
 >   go Tip = btLeaf k v
 >   go n =
 >     case compare k (_key n) of
->       EQ -> n { _val   = v }
->       LT -> let (l,authL) = update (_left n)  in Bin (_key n) (_val n) l (_right n) authL (_authR n)
->       GT -> let (r,authR) = update (_right n) in Bin (_key n) (_val n) (_left n) r  (_authL n) authR
->   update n = let n' = btInsert k v n in (n', btMerkleRoot n')
+>       EQ -> n { _val = v }
+>       LT -> let l = lr (_left  n) in btBin (_key n) (_val n) l         (_right n)
+>       GT -> let r = lr (_right n) in btBin (_key n) (_val n) (_left n) r
+>   lr = btInsert k v
 
 > -- | Lookup
 > btLookup :: (Ord k , Ser2 k v)
