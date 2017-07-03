@@ -1,4 +1,4 @@
-name:    a003
+name:    a003-authenticated-map-merkle-trees
 version: "0.0.0"
 license: BSD3
 
@@ -25,5 +25,5 @@ tests:
     source-dirs: test
     ghc-options: -Wall
     dependencies:
-    - a003
+    - a003-authenticated-map-merkle-trees
     - hspec

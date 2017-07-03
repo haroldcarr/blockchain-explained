@@ -1,4 +1,4 @@
-authenticated data structures (merkle trees)
+authenticated map (merkle trees)
 -----------------------------
 
 This exposition focuses on high-level view of Merkle Trees along the lines
@@ -39,9 +39,8 @@ setup
 verified map
 ------------
 
-A `VerifiedMap` is an authenticated data structure (ADS) where `lookup`
-can be carried out by an untrusted prover.
-A verifier can check the results as authentic.
+A `VerifiedMap` an authenticated key/value map where `lookup` results
+can be verified as authentic.
 
 > class VerifiedMap (m :: * -> * -> *) where
 >   type Evidence  m     :: *
@@ -50,22 +49,22 @@ A verifier can check the results as authentic.
 >
 >   -- | Add a key/value to a map (or update a value if key exists).
 >   insert :: (Ord k , Ctr m k v) => k -> v -> m k v -> m k v
-
+>
 >   -- | Lookup returns the value associated with a key.
 >   -- It also returns `Evidence` that can be used to
 >   -- independently verify that the map contains the key/value pair.
 >   lookup :: (Ord k , Ctr m k v) => k -> m k v -> Prover (Evidence m) (Maybe v)
-
+>
 >   -- | Merkle root of a map.
 >   root   ::         (Ctr m k v) => m k v -> Digest m
-
+>
 >   -- | Given a map's merkle root, a key/value pair and evidence,
 >   -- verifies that the map contains the key/value pair.
 >   verify ::         (Ctr m k v) => Proxy m -> Digest m -> k -> v -> Verifier (Evidence m) Bool
-
+>
 > -- | Prover 'writes' to proof stream `w` and provides "result" `a`
 > type Prover w a   = Writer w a
-
+>
 > -- | Verifier 'reads' and verifies proof stream `w` produces result `a`
 > type Verifier r a = Reader r a
 
@@ -116,18 +115,6 @@ for the changed tree.
 >       LT -> let l = lr (_left  n) in btBin (_key n) (_val n) l         (_right n)
 >       GT -> let r = lr (_right n) in btBin (_key n) (_val n) (_left n) r
 >   lr = btInsert k v
-
-       LT -> let (l,btb) = lr (_left  n) in btb l         (_right n)
-       GT -> let (r,btb) = lr (_right n) in btb (_left n) r
-   lr n = (btInsert k v n , btBin (_key n) (_val n))
-
-a003-0.0.0: test (suite: test)
-
-Progress: 3/4test: No match in record selector _key
-
-Completed 4 action(s).
-Test suite failure for package a003-0.0.0
-    test:  exited with: ExitFailure 1
 
 where
 
@@ -287,7 +274,7 @@ test using interface
 >   (_, r) <- runIO (test 10000 10000)
 >   describe "t3" $
 >     it "test 10000 10000" $ r `shouldBe` True
-
+>
 > -- | @test m n@ populates an empty tree with m key-value pairs,
 > --   inserted in random order, then perform n verified lookups
 > test :: Int -> Int -> IO (BTree Int Int, Bool)
@@ -311,13 +298,13 @@ test using interface
 >              return True
 >            else
 >              putStrLn (msg ++ "FAIL") >> return False
-
+>
 > fisherYatesStep :: RandomGen g
 >                 => (M.Map Int a, g) -> (Int, a) -> (M.Map Int a, g)
 > fisherYatesStep (m, gen) (i, x) = ((M.insert j x . M.insert i (m M.! j)) m
 >                                   , gen')
 >   where (j, gen') = randomR (0, i) gen
-
+>
 > fisherYates :: RandomGen g => [a] -> g -> ([a], g)
 > fisherYates [] g = ([], g)
 > fisherYates l g =
@@ -326,7 +313,12 @@ test using interface
 >   toElems (x, y) = (M.elems x, y)
 >   numerate = zip [1..]
 >   initial x gen = (M.singleton 0 x, gen)
-
+>
 > shuffle :: [a] -> IO [a]
 > shuffle l = getStdRandom (fisherYates l)
 
+credits
+-------
+
+The code above is modified from Victor Cacciari Miraldo's authenticated red/black tree
+implementation.
