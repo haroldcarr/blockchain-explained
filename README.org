@@ -2,7 +2,9 @@
 
 - [[a001-the-chain-in-blockchain][the chain in blockchain]]
 - [[https://github.com/haroldcarr/blockchain-explained/tree/master/a002-the-block-in-blockchain-merkle-tree][the block in blockchain explained (merkle trees)]]
+- [[https://github.com/haroldcarr/blockchain-explained/tree/master/a003-authenticated-map-merkle-trees][authenticated map (merkle trees)]]
 - consensus (e.g., mining, Raft)
+- smart contracts
 - ...
 
 
