@@ -1,6 +1,0 @@
-resolver: lts-8.21
-packages:
-- '.'
-extra-deps: [AES-0.2.9, SHA2-0.2.5]
-flags: {}
-extra-package-dbs: []
